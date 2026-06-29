@@ -10,6 +10,7 @@ export interface Wedding {
 export interface Passenger {
   id: string;
   car_id: string;
+  wedding_id: string;
   name: string;
   phone: string;
   address: string;

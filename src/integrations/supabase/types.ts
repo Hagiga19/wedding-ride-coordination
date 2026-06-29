@@ -78,6 +78,7 @@ export type Database = {
           id: string
           name: string
           phone: string
+          wedding_id: string
         }
         Insert: {
           address: string
@@ -86,6 +87,7 @@ export type Database = {
           id?: string
           name: string
           phone: string
+          wedding_id?: string
         }
         Update: {
           address?: string
@@ -94,6 +96,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string
+          wedding_id?: string
         }
         Relationships: [
           {
@@ -101,6 +104,13 @@ export type Database = {
             columns: ["car_id"]
             isOneToOne: false
             referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "passengers_wedding_id_fkey"
+            columns: ["wedding_id"]
+            isOneToOne: false
+            referencedRelation: "weddings"
             referencedColumns: ["id"]
           },
         ]
@@ -131,7 +141,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      join_car_with_password: {
+        Args: {
+          p_address: string
+          p_car_id: string
+          p_name: string
+          p_password: string
+          p_phone: string
+        }
+        Returns: Database["public"]["Tables"]["passengers"]["Row"]
+      }
     }
     Enums: {
       trip_direction: "to" | "from"

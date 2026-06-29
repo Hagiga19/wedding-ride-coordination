@@ -78,7 +78,7 @@ function WeddingBoard() {
       .on("postgres_changes", { event: "*", schema: "public", table: "cars", filter: `wedding_id=eq.${wedding.id}` }, () => {
         qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "passengers" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "passengers", filter: `wedding_id=eq.${wedding.id}` }, () => {
         qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
       })
       .subscribe();

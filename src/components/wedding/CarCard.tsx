@@ -27,6 +27,7 @@ export function CarCard({ car, onJoin, onEdit }: Props) {
   const [expanded, setExpanded] = useState(false);
   const passengers = car.passengers ?? [];
   const seatsLeft = car.seats_total - passengers.length;
+  const seatBarSlots = Math.min(Math.max(car.seats_total, 0), 20);
   const full = seatsLeft <= 0;
 
   const deleteCar = async () => {
@@ -87,7 +88,7 @@ export function CarCard({ car, onJoin, onEdit }: Props) {
         <div className="mt-3 flex items-center gap-1.5" aria-label={`${passengers.length} מתוך ${car.seats_total}`}>
           <Users className="h-3.5 w-3.5 text-muted-foreground" />
           <div className="flex gap-1 flex-1">
-            {Array.from({ length: car.seats_total }).map((_, i) => (
+            {Array.from({ length: seatBarSlots }).map((_, i) => (
               <span
                 key={i}
                 className={

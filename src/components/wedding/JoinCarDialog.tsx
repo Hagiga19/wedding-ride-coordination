@@ -63,11 +63,12 @@ export function JoinCarDialog({ car, open, onOpenChange }: Props) {
     }
 
     setSaving(true);
-    const { error } = await supabase.from("passengers").insert({
-      car_id: car.id,
-      name,
-      phone,
-      address,
+    const { error } = await supabase.rpc("join_car_with_password", {
+      p_car_id: car.id,
+      p_password: password,
+      p_name: name,
+      p_phone: phone,
+      p_address: address,
     });
     setSaving(false);
 
