@@ -180,9 +180,6 @@ function Index() {
         open={!!joinCar}
         onOpenChange={(o) => { if (!o) setJoinCar(null); }}
       />
-
-      {/* Suppress unused activeList/activeCounts warnings; used inside tabs */}
-      <span className="hidden">{activeList.length}{activeCounts.cars}</span>
     </div>
   );
 }
@@ -211,6 +208,3 @@ function EmptyState({ direction }: { direction: Direction }) {
     </div>
   );
 }
-
-// Silence unused imports in this file
-void MapPin; void Phone; void Clock; void Trash2; void Pencil;
