@@ -12,7 +12,7 @@ import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
 import type { CarWithPassengers, Direction } from "@/components/wedding/types";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/w/$slug")({
   head: () => ({
     meta: [
       { title: "טרמפים לחתונה" },
