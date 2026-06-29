@@ -47,7 +47,6 @@ function Landing() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [creating, setCreating] = useState(false);
   const [deleteWedding, setDeleteWedding] = useState<Wedding | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
 
   const { data: weddings } = useQuery({
@@ -63,7 +62,6 @@ function Landing() {
   });
 
   const effectiveSlug = slugTouched ? slugify(slug) : slugify(name);
-  const deleteReady = !!deleteWedding && deleteConfirm.trim() === deleteWedding.slug;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,20 +93,15 @@ function Landing() {
 
   const closeDeleteDialog = () => {
     setDeleteWedding(null);
-    setDeleteConfirm("");
   };
 
   const handleDeleteWedding = async () => {
     if (!deleteWedding) return;
-    if (!deleteReady) {
-      toast.error("יש להקליד את כתובת הקישור כדי למחוק");
-      return;
-    }
 
     setDeleting(true);
     const { error } = await supabase.rpc("delete_wedding_by_slug", {
       p_slug: deleteWedding.slug,
-      p_confirm_slug: deleteConfirm.trim(),
+      p_confirm_slug: deleteWedding.slug,
     });
     setDeleting(false);
 
@@ -209,7 +202,6 @@ function Landing() {
                     aria-label={`מחק את ${w.name}`}
                     onClick={() => {
                       setDeleteWedding(w);
-                      setDeleteConfirm("");
                     }}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -231,7 +223,7 @@ function Landing() {
           <DialogHeader>
             <DialogTitle>מחיקת חתונה</DialogTitle>
             <DialogDescription>
-              פעולה זו תמחק את החתונה, כל הרכבים וכל הנוסעים שלה.
+              האם אתם בטוחים שתרצו למחוק את החתונה הזו?
             </DialogDescription>
           </DialogHeader>
           {deleteWedding && (
@@ -242,16 +234,9 @@ function Landing() {
                   /w/{deleteWedding.slug}
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <Label>הקלידו את כתובת הקישור למחיקה</Label>
-                <Input
-                  value={deleteConfirm}
-                  onChange={(e) => setDeleteConfirm(e.target.value)}
-                  placeholder={deleteWedding.slug}
-                  dir="ltr"
-                  className="font-mono"
-                />
-              </div>
+              <p className="text-sm text-muted-foreground">
+                פעולה זו תמחק גם את כל הרכבים וכל הנוסעים של החתונה.
+              </p>
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-2">
@@ -261,7 +246,7 @@ function Landing() {
             <Button
               type="button"
               variant="destructive"
-              disabled={!deleteReady || deleting}
+              disabled={deleting}
               onClick={handleDeleteWedding}
             >
               {deleting ? "מוחק..." : "מחיקה"}
