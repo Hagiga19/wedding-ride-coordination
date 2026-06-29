@@ -21,6 +21,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   direction: Direction;
   car: CarWithPassengers | null;
+  weddingId: string;
 }
 
 const empty = {
