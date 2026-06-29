@@ -14,7 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cars: {
+        Row: {
+          created_at: string
+          departure_time: string | null
+          direction: Database["public"]["Enums"]["trip_direction"]
+          driver_name: string
+          driver_phone: string
+          from_location: string
+          id: string
+          notes: string | null
+          password: string
+          seats_total: number
+          to_location: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          departure_time?: string | null
+          direction: Database["public"]["Enums"]["trip_direction"]
+          driver_name: string
+          driver_phone: string
+          from_location: string
+          id?: string
+          notes?: string | null
+          password: string
+          seats_total: number
+          to_location: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          departure_time?: string | null
+          direction?: Database["public"]["Enums"]["trip_direction"]
+          driver_name?: string
+          driver_phone?: string
+          from_location?: string
+          id?: string
+          notes?: string | null
+          password?: string
+          seats_total?: number
+          to_location?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      passengers: {
+        Row: {
+          address: string
+          car_id: string
+          created_at: string
+          id: string
+          name: string
+          phone: string
+        }
+        Insert: {
+          address: string
+          car_id: string
+          created_at?: string
+          id?: string
+          name: string
+          phone: string
+        }
+        Update: {
+          address?: string
+          car_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "passengers_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +102,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      trip_direction: "to" | "from"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +229,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      trip_direction: ["to", "from"],
+    },
   },
 } as const
