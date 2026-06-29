@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, MapPin, Phone, Clock, Trash2, Pencil, UserPlus, Car as CarIcon } from "lucide-react";
+import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
