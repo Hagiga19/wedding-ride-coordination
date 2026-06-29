@@ -1,5 +1,12 @@
 export type Direction = "to" | "from";
 
+export interface Wedding {
+  id: string;
+  slug: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Passenger {
   id: string;
   car_id: string;
