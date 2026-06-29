@@ -120,10 +120,26 @@ function WeddingBoard() {
     }
   };
 
+  if (weddingLoading) {
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">טוען…</div>;
+  }
+  if (weddingError || !wedding) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center gap-4">
+        <h1 className="text-2xl font-bold text-primary">החתונה לא נמצאה</h1>
+        <Link to="/" className="underline text-primary">חזרה לדף הבית</Link>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
       <header className="px-4 pt-8 pb-6 text-center">
+        <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-3">
+          <ArrowRight className="h-3 w-3" />
+          כל החתונות
+        </Link>
         <div className="inline-flex items-center justify-center gap-2 text-gold mb-3">
           <Heart className="h-5 w-5 fill-current" />
           <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
@@ -132,7 +148,7 @@ function WeddingBoard() {
           <Heart className="h-5 w-5 fill-current" />
         </div>
         <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight">
-          טרמפים לחתונה
+          {wedding.name}
         </h1>
         <p className="mt-3 text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
           הוסיפו רכב שאתם נוסעים בו, או הצטרפו לרכב של חבר.
@@ -146,6 +162,7 @@ function WeddingBoard() {
           </Button>
         </div>
       </header>
+
 
       {/* Main */}
       <main className="px-4 max-w-2xl mx-auto">
