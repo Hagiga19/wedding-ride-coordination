@@ -219,6 +219,7 @@ function WeddingBoard() {
         onOpenChange={(o) => { setAddOpen(o); if (!o) setEditCar(null); }}
         direction={tab}
         car={editCar}
+        weddingId={wedding.id}
       />
       <JoinCarDialog
         car={joinCar}
