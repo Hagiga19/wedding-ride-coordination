@@ -1,13 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, ArrowLeft, Sparkles } from "lucide-react";
+import { Heart, Plus, ArrowLeft, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Wedding } from "@/components/wedding/types";
 
 export const Route = createFileRoute("/")({
@@ -38,6 +46,9 @@ function Landing() {
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleteWedding, setDeleteWedding] = useState<Wedding | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const { data: weddings } = useQuery({
     queryKey: ["weddings"],
@@ -52,6 +63,7 @@ function Landing() {
   });
 
   const effectiveSlug = slugTouched ? slugify(slug) : slugify(name);
+  const deleteReady = !!deleteWedding && deleteConfirm.trim() === deleteWedding.slug;
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +91,35 @@ function Landing() {
     qc.invalidateQueries({ queryKey: ["weddings"] });
     toast.success("החתונה נוצרה!");
     navigate({ to: "/w/$slug", params: { slug: data!.slug } });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteWedding(null);
+    setDeleteConfirm("");
+  };
+
+  const handleDeleteWedding = async () => {
+    if (!deleteWedding) return;
+    if (!deleteReady) {
+      toast.error("יש להקליד את כתובת הקישור כדי למחוק");
+      return;
+    }
+
+    setDeleting(true);
+    const { error } = await supabase.rpc("delete_wedding_by_slug", {
+      p_slug: deleteWedding.slug,
+      p_confirm_slug: deleteConfirm.trim(),
+    });
+    setDeleting(false);
+
+    if (error) {
+      toast.error("שגיאה במחיקה: " + error.message);
+      return;
+    }
+
+    toast.success("החתונה נמחקה");
+    closeDeleteDialog();
+    qc.invalidateQueries({ queryKey: ["weddings"] });
   };
 
   return (
@@ -148,11 +189,11 @@ function Landing() {
             </h2>
             <ul className="space-y-2">
               {weddings.map((w) => (
-                <li key={w.id}>
+                <li key={w.id} className="flex items-stretch gap-2">
                   <Link
                     to="/w/$slug"
                     params={{ slug: w.slug }}
-                    className="flex items-center justify-between rounded-xl bg-card/70 border border-border hover:border-primary hover:bg-card transition p-4 group"
+                    className="flex min-w-0 flex-1 items-center justify-between rounded-xl bg-card/70 border border-border hover:border-primary hover:bg-card transition p-4 group"
                   >
                     <div className="text-right">
                       <div className="font-semibold text-primary">{w.name}</div>
@@ -160,12 +201,74 @@ function Landing() {
                     </div>
                     <ArrowLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary transition" />
                   </Link>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-auto w-12 shrink-0 rounded-xl text-muted-foreground hover:text-destructive"
+                    aria-label={`מחק את ${w.name}`}
+                    onClick={() => {
+                      setDeleteWedding(w);
+                      setDeleteConfirm("");
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </li>
               ))}
             </ul>
           </section>
         )}
       </main>
+
+      <Dialog
+        open={!!deleteWedding}
+        onOpenChange={(open) => {
+          if (!open) closeDeleteDialog();
+        }}
+      >
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>מחיקת חתונה</DialogTitle>
+            <DialogDescription>
+              פעולה זו תמחק את החתונה, כל הרכבים וכל הנוסעים שלה.
+            </DialogDescription>
+          </DialogHeader>
+          {deleteWedding && (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
+                <div className="font-medium text-foreground">{deleteWedding.name}</div>
+                <div className="font-mono text-xs text-muted-foreground" dir="ltr">
+                  /w/{deleteWedding.slug}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>הקלידו את כתובת הקישור למחיקה</Label>
+                <Input
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder={deleteWedding.slug}
+                  dir="ltr"
+                  className="font-mono"
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="ghost" onClick={closeDeleteDialog}>
+              ביטול
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!deleteReady || deleting}
+              onClick={handleDeleteWedding}
+            >
+              {deleting ? "מוחק..." : "מחיקה"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -141,6 +141,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_wedding_by_slug: {
+        Args: {
+          p_confirm_slug: string
+          p_slug: string
+        }
+        Returns: undefined
+      }
       join_car_with_password: {
         Args: {
           p_address: string
