@@ -147,7 +147,7 @@ function Index() {
 
               {isLoading ? (
                 <p className="text-center text-muted-foreground py-8">טוען…</p>
-              ) : activeList.length === 0 && tab === dir ? (
+              ) : grouped[dir].length === 0 ? (
                 <EmptyState direction={dir} />
               ) : (
                 <div className="space-y-3">
