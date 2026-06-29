@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon } from "lucide-react";
+import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -10,52 +10,83 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CarFormDialog } from "@/components/wedding/CarFormDialog";
 import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
-import type { CarWithPassengers, Direction } from "@/components/wedding/types";
+import type { CarWithPassengers, Direction, Wedding } from "@/components/wedding/types";
 
 export const Route = createFileRoute("/w/$slug")({
-  head: () => ({
+  head: ({ params }) => ({
     meta: [
-      { title: "טרמפים לחתונה" },
+      { title: `טרמפים — ${params.slug}` },
       { name: "description", content: "תיאום טרמפים — הוסיפו רכב או הצטרפו לרכב של חבר" },
     ],
   }),
-  component: Index,
+  component: WeddingBoard,
+  notFoundComponent: () => (
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center gap-4">
+      <h1 className="text-2xl font-bold text-primary">החתונה לא נמצאה</h1>
+      <p className="text-muted-foreground">בדקו את הקישור או צרו חתונה חדשה.</p>
+      <Link to="/" className="underline text-primary">חזרה לדף הבית</Link>
+    </div>
+  ),
+  errorComponent: ({ reset }) => (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <button onClick={reset} className="underline">נסה שוב</button>
+    </div>
+  ),
 });
 
-function Index() {
+function WeddingBoard() {
+  const { slug } = Route.useParams();
   const qc = useQueryClient();
   const [tab, setTab] = useState<Direction>("to");
   const [addOpen, setAddOpen] = useState(false);
   const [editCar, setEditCar] = useState<CarWithPassengers | null>(null);
   const [joinCar, setJoinCar] = useState<CarWithPassengers | null>(null);
 
+  const { data: wedding, isLoading: weddingLoading, error: weddingError } = useQuery({
+    queryKey: ["wedding", slug],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("weddings")
+        .select("*")
+        .eq("slug", slug)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw notFound();
+      return data as Wedding;
+    },
+  });
+
   const { data: cars, isLoading } = useQuery({
-    queryKey: ["cars"],
+    queryKey: ["cars", wedding?.id],
+    enabled: !!wedding?.id,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cars")
         .select("*, passengers(*)")
+        .eq("wedding_id", wedding!.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as CarWithPassengers[];
     },
   });
 
-  // Realtime: invalidate on any change
+  // Realtime: invalidate on any change for this wedding
   useEffect(() => {
+    if (!wedding?.id) return;
     const channel = supabase
-      .channel("wedding-carpool")
-      .on("postgres_changes", { event: "*", schema: "public", table: "cars" }, () => {
-        qc.invalidateQueries({ queryKey: ["cars"] });
+      .channel(`wedding-${wedding.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cars", filter: `wedding_id=eq.${wedding.id}` }, () => {
+        qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "passengers" }, () => {
-        qc.invalidateQueries({ queryKey: ["cars"] });
+        qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [qc]);
+  }, [qc, wedding?.id]);
+
 
   const grouped = useMemo(() => {
     const all = cars ?? [];
