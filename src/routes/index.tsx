@@ -89,9 +89,6 @@ function Index() {
     }
   };
 
-  const activeList = grouped[tab];
-  const activeCounts = counts[tab];
-
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
