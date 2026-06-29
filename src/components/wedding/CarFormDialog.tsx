@@ -90,6 +90,7 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
 
     setSaving(true);
     const payload = {
+      wedding_id: weddingId,
       driver_name: name,
       driver_phone: phone,
       direction,
