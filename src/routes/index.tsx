@@ -99,14 +99,21 @@ function Landing() {
     if (!deleteWedding) return;
 
     setDeleting(true);
-    const { error } = await supabase.rpc("delete_wedding_by_slug", {
-      p_slug: deleteWedding.slug,
-      p_confirm_slug: deleteWedding.slug,
-    });
+    const { data, error } = await supabase
+      .from("weddings")
+      .delete()
+      .eq("id", deleteWedding.id)
+      .select("id")
+      .maybeSingle();
     setDeleting(false);
 
     if (error) {
       toast.error("שגיאה במחיקה: " + error.message);
+      return;
+    }
+
+    if (!data) {
+      toast.error("החתונה לא נמחקה. יש לעדכן את הרשאות המחיקה במסד הנתונים.");
       return;
     }
 
