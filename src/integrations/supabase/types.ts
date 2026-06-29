@@ -28,6 +28,7 @@ export type Database = {
           seats_total: number
           to_location: string
           updated_at: string
+          wedding_id: string
         }
         Insert: {
           created_at?: string
@@ -42,6 +43,7 @@ export type Database = {
           seats_total: number
           to_location: string
           updated_at?: string
+          wedding_id: string
         }
         Update: {
           created_at?: string
@@ -56,8 +58,17 @@ export type Database = {
           seats_total?: number
           to_location?: string
           updated_at?: string
+          wedding_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cars_wedding_id_fkey"
+            columns: ["wedding_id"]
+            isOneToOne: false
+            referencedRelation: "weddings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       passengers: {
         Row: {
@@ -93,6 +104,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      weddings: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
       }
     }
     Views: {

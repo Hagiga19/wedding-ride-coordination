@@ -21,6 +21,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   direction: Direction;
   car: CarWithPassengers | null;
+  weddingId: string;
 }
 
 const empty = {
@@ -34,7 +35,7 @@ const empty = {
   notes: "",
 };
 
-export function CarFormDialog({ open, onOpenChange, direction, car }: Props) {
+export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }: Props) {
   const editing = !!car;
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -89,6 +90,7 @@ export function CarFormDialog({ open, onOpenChange, direction, car }: Props) {
 
     setSaving(true);
     const payload = {
+      wedding_id: weddingId,
       driver_name: name,
       driver_phone: phone,
       direction,

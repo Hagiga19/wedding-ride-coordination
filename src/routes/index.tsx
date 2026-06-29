@@ -1,98 +1,89 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon } from "lucide-react";
+import { Heart, Plus, ArrowLeft, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { CarFormDialog } from "@/components/wedding/CarFormDialog";
-import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
-import { CarCard } from "@/components/wedding/CarCard";
-import type { CarWithPassengers, Direction } from "@/components/wedding/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { Wedding } from "@/components/wedding/types";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "טרמפים לחתונה" },
-      { name: "description", content: "תיאום טרמפים — הוסיפו רכב או הצטרפו לרכב של חבר" },
+      { title: "טרמפים לחתונה — צרו או בחרו חתונה" },
+      { name: "description", content: "צרו דף תיאום טרמפים לחתונה משלכם, או היכנסו לחתונה קיימת." },
     ],
   }),
-  component: Index,
+  component: Landing,
 });
 
-function Index() {
-  const qc = useQueryClient();
-  const [tab, setTab] = useState<Direction>("to");
-  const [addOpen, setAddOpen] = useState(false);
-  const [editCar, setEditCar] = useState<CarWithPassengers | null>(null);
-  const [joinCar, setJoinCar] = useState<CarWithPassengers | null>(null);
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+}
 
-  const { data: cars, isLoading } = useQuery({
-    queryKey: ["cars"],
+function Landing() {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  const { data: weddings } = useQuery({
+    queryKey: ["weddings"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("cars")
-        .select("*, passengers(*)")
-        .order("created_at", { ascending: true });
+        .from("weddings")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as CarWithPassengers[];
+      return (data ?? []) as Wedding[];
     },
   });
 
-  // Realtime: invalidate on any change
-  useEffect(() => {
-    const channel = supabase
-      .channel("wedding-carpool")
-      .on("postgres_changes", { event: "*", schema: "public", table: "cars" }, () => {
-        qc.invalidateQueries({ queryKey: ["cars"] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "passengers" }, () => {
-        qc.invalidateQueries({ queryKey: ["cars"] });
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [qc]);
+  const effectiveSlug = slugTouched ? slugify(slug) : slugify(name);
 
-  const grouped = useMemo(() => {
-    const all = cars ?? [];
-    return {
-      to: all.filter((c) => c.direction === "to"),
-      from: all.filter((c) => c.direction === "from"),
-    };
-  }, [cars]);
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalName = name.trim();
+    const finalSlug = effectiveSlug;
+    if (!finalName) return toast.error("יש להזין שם לחתונה");
+    if (finalSlug.length < 2) return toast.error("כתובת ה־URL חייבת לכלול לפחות 2 תווים (אותיות באנגלית/ספרות/מקפים)");
 
-  const counts = useMemo(() => {
-    const sum = (list: CarWithPassengers[]) => ({
-      cars: list.length,
-      drivers: list.length,
-      passengers: list.reduce((n, c) => n + (c.passengers?.length ?? 0), 0),
-      seatsLeft: list.reduce((n, c) => n + Math.max(0, c.seats_total - (c.passengers?.length ?? 0)), 0),
-    });
-    return { to: sum(grouped.to), from: sum(grouped.from) };
-  }, [grouped]);
+    setCreating(true);
+    const { data, error } = await supabase
+      .from("weddings")
+      .insert({ name: finalName, slug: finalSlug })
+      .select()
+      .maybeSingle();
+    setCreating(false);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: "טרמפים לחתונה", url });
+    if (error) {
+      if (error.code === "23505") {
+        toast.error("הכתובת הזו תפוסה — בחרו אחרת");
       } else {
-        await navigator.clipboard.writeText(url);
-        toast.success("הקישור הועתק!");
+        toast.error("שגיאה ביצירה: " + error.message);
       }
-    } catch {
-      /* user cancelled */
+      return;
     }
+    qc.invalidateQueries({ queryKey: ["weddings"] });
+    toast.success("החתונה נוצרה!");
+    navigate({ to: "/w/$slug", params: { slug: data!.slug } });
   };
 
   return (
-    <div className="min-h-screen pb-24">
-      {/* Header */}
-      <header className="px-4 pt-8 pb-6 text-center">
+    <div className="min-h-screen pb-16">
+      <header className="px-4 pt-12 pb-8 text-center">
         <div className="inline-flex items-center justify-center gap-2 text-gold mb-3">
           <Heart className="h-5 w-5 fill-current" />
           <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
@@ -104,104 +95,77 @@ function Index() {
           טרמפים לחתונה
         </h1>
         <p className="mt-3 text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
-          הוסיפו רכב שאתם נוסעים בו, או הצטרפו לרכב של חבר.
-          <br />
-          כדי להצטרף, תזדקקו לסיסמה בת 4 תווים מהנהג.
+          צרו דף חדש לחתונה שלכם, או היכנסו לחתונה קיימת.
+          <br />כל חתונה היא לגמרי נפרדת — עם קישור משלה לשיתוף.
         </p>
-        <div className="mt-5 flex items-center justify-center gap-2">
-          <Button onClick={handleShare} variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            שיתוף הקישור
-          </Button>
-        </div>
       </header>
 
-      {/* Main */}
-      <main className="px-4 max-w-2xl mx-auto">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Direction)} dir="rtl">
-          <TabsList className="grid w-full grid-cols-2 h-12 bg-secondary/60 backdrop-blur">
-            <TabsTrigger value="to" className="text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              לחתונה
-            </TabsTrigger>
-            <TabsTrigger value="from" className="text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              חזרה מהחתונה
-            </TabsTrigger>
-          </TabsList>
-
-          {(["to", "from"] as const).map((dir) => (
-            <TabsContent key={dir} value={dir} className="mt-5 space-y-4">
-              {/* Summary */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <Stat icon={<CarIcon className="h-4 w-4" />} label="רכבים" value={counts[dir].cars} />
-                <Stat icon={<Users className="h-4 w-4" />} label="נוסעים" value={counts[dir].passengers} />
-                <Stat icon={<UserPlus className="h-4 w-4" />} label="מקומות פנויים" value={counts[dir].seatsLeft} />
+      <main className="px-4 max-w-xl mx-auto space-y-8">
+        {/* Create new */}
+        <section className="rounded-2xl bg-card border border-border shadow-card p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-5 w-5 text-gold" />
+            <h2 className="text-lg font-semibold text-primary">חתונה חדשה</h2>
+          </div>
+          <form onSubmit={handleCreate} className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>שם החתונה</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="לדוגמה: דנה ויוסי"
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>כתובת הקישור</Label>
+              <div className="flex items-center gap-1 text-sm" dir="ltr">
+                <span className="text-muted-foreground">/w/</span>
+                <Input
+                  value={slugTouched ? slug : effectiveSlug}
+                  onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); }}
+                  placeholder="dana-yossi"
+                  className="font-mono"
+                  dir="ltr"
+                />
               </div>
+              <p className="text-xs text-muted-foreground">
+                אותיות אנגלית קטנות, ספרות ומקפים בלבד. זה מה שיופיע בקישור שתשתפו.
+              </p>
+            </div>
+            <Button type="submit" disabled={creating} className="w-full h-11 gap-2">
+              <Plus className="h-4 w-4" />
+              {creating ? "יוצר…" : "צור חתונה חדשה"}
+            </Button>
+          </form>
+        </section>
 
-              <Button
-                onClick={() => { setEditCar(null); setAddOpen(true); }}
-                className="w-full h-12 gap-2 text-base shadow-soft"
-              >
-                <Plus className="h-5 w-5" />
-                הוספת רכב {dir === "to" ? "לחתונה" : "חזרה"}
-              </Button>
-
-              {isLoading ? (
-                <p className="text-center text-muted-foreground py-8">טוען…</p>
-              ) : grouped[dir].length === 0 ? (
-                <EmptyState direction={dir} />
-              ) : (
-                <div className="space-y-3">
-                  {grouped[dir].map((car) => (
-                    <CarCard
-                      key={car.id}
-                      car={car}
-                      onJoin={() => setJoinCar(car)}
-                      onEdit={() => { setEditCar(car); setAddOpen(true); }}
-                    />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
+        {/* Existing */}
+        {weddings && weddings.length > 0 && (
+          <section>
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">
+              חתונות קיימות
+            </h2>
+            <ul className="space-y-2">
+              {weddings.map((w) => (
+                <li key={w.id}>
+                  <Link
+                    to="/w/$slug"
+                    params={{ slug: w.slug }}
+                    className="flex items-center justify-between rounded-xl bg-card/70 border border-border hover:border-primary hover:bg-card transition p-4 group"
+                  >
+                    <div className="text-right">
+                      <div className="font-semibold text-primary">{w.name}</div>
+                      <div className="text-xs text-muted-foreground font-mono" dir="ltr">/w/{w.slug}</div>
+                    </div>
+                    <ArrowLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary transition" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </main>
-
-      <CarFormDialog
-        open={addOpen}
-        onOpenChange={(o) => { setAddOpen(o); if (!o) setEditCar(null); }}
-        direction={tab}
-        car={editCar}
-      />
-      <JoinCarDialog
-        car={joinCar}
-        open={!!joinCar}
-        onOpenChange={(o) => { if (!o) setJoinCar(null); }}
-      />
-    </div>
-  );
-}
-
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
-  return (
-    <div className="rounded-xl bg-card/70 backdrop-blur border border-border/60 py-3 px-2 shadow-card">
-      <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="text-2xl font-bold text-primary mt-0.5">{value}</div>
-    </div>
-  );
-}
-
-function EmptyState({ direction }: { direction: Direction }) {
-  return (
-    <div className="text-center py-12 px-4 rounded-2xl bg-card/50 border border-dashed border-border">
-      <CarIcon className="h-10 w-10 mx-auto text-muted-foreground/60" />
-      <p className="mt-3 text-muted-foreground">
-        עדיין אין רכבים {direction === "to" ? "לחתונה" : "לחזרה"}.
-        <br />
-        היו הראשונים להוסיף!
-      </p>
     </div>
   );
 }
