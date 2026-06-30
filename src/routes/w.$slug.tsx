@@ -6,11 +6,10 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { CarFormDialog } from "@/components/wedding/CarFormDialog";
 import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
-import type { CarWithPassengers, Direction, Wedding } from "@/components/wedding/types";
+import type { CarWithPassengers, Wedding } from "@/components/wedding/types";
 
 export const Route = createFileRoute("/w/$slug")({
   head: ({ params }) => ({
@@ -37,7 +36,6 @@ export const Route = createFileRoute("/w/$slug")({
 function WeddingBoard() {
   const { slug } = Route.useParams();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Direction>("to");
   const [addOpen, setAddOpen] = useState(false);
   const [editCar, setEditCar] = useState<CarWithPassengers | null>(null);
   const [joinCar, setJoinCar] = useState<CarWithPassengers | null>(null);
@@ -88,23 +86,16 @@ function WeddingBoard() {
   }, [qc, wedding?.id]);
 
 
-  const grouped = useMemo(() => {
-    const all = cars ?? [];
-    return {
-      to: all.filter((c) => c.direction === "to"),
-      from: all.filter((c) => c.direction === "from"),
-    };
-  }, [cars]);
+  const allCars = useMemo(() => cars ?? [], [cars]);
 
-  const counts = useMemo(() => {
-    const sum = (list: CarWithPassengers[]) => ({
-      cars: list.length,
-      drivers: list.length,
-      passengers: list.reduce((n, c) => n + (c.passengers?.length ?? 0), 0),
-      seatsLeft: list.reduce((n, c) => n + Math.max(0, c.seats_total - (c.passengers?.length ?? 0)), 0),
-    });
-    return { to: sum(grouped.to), from: sum(grouped.from) };
-  }, [grouped]);
+  const counts = useMemo(
+    () => ({
+      cars: allCars.length,
+      passengers: allCars.reduce((n, c) => n + (c.passengers?.length ?? 0), 0),
+      seatsLeft: allCars.reduce((n, c) => n + Math.max(0, c.seats_total - (c.passengers?.length ?? 0)), 0),
+    }),
+    [allCars],
+  );
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -151,7 +142,7 @@ function WeddingBoard() {
           {wedding.name}
         </h1>
         <p className="mt-3 text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
-          הוסיפו רכב שאתם נוסעים בו, או הצטרפו לרכב של חבר.
+          הוסיפו רכב לנסיעה הלוך וחזור, או הצטרפו לרכב של חבר.
           <br />
           כדי להצטרף, תזדקקו לסיסמה בת 4 תווים מהנהג.
         </p>
@@ -166,58 +157,44 @@ function WeddingBoard() {
 
       {/* Main */}
       <main className="px-4 max-w-2xl mx-auto">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as Direction)} dir="rtl">
-          <TabsList className="grid w-full grid-cols-2 h-12 bg-secondary/60 backdrop-blur">
-            <TabsTrigger value="to" className="text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              לחתונה
-            </TabsTrigger>
-            <TabsTrigger value="from" className="text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              חזרה מהחתונה
-            </TabsTrigger>
-          </TabsList>
+        <div className="space-y-4">
+          {/* Summary */}
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <Stat icon={<CarIcon className="h-4 w-4" />} label="רכבים" value={counts.cars} />
+            <Stat icon={<Users className="h-4 w-4" />} label="נוסעים" value={counts.passengers} />
+            <Stat icon={<UserPlus className="h-4 w-4" />} label="מקומות פנויים" value={counts.seatsLeft} />
+          </div>
 
-          {(["to", "from"] as const).map((dir) => (
-            <TabsContent key={dir} value={dir} className="mt-5 space-y-4">
-              {/* Summary */}
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <Stat icon={<CarIcon className="h-4 w-4" />} label="רכבים" value={counts[dir].cars} />
-                <Stat icon={<Users className="h-4 w-4" />} label="נוסעים" value={counts[dir].passengers} />
-                <Stat icon={<UserPlus className="h-4 w-4" />} label="מקומות פנויים" value={counts[dir].seatsLeft} />
-              </div>
+          <Button
+            onClick={() => { setEditCar(null); setAddOpen(true); }}
+            className="w-full h-12 gap-2 text-base shadow-soft"
+          >
+            <Plus className="h-5 w-5" />
+            הוספת רכב
+          </Button>
 
-              <Button
-                onClick={() => { setEditCar(null); setAddOpen(true); }}
-                className="w-full h-12 gap-2 text-base shadow-soft"
-              >
-                <Plus className="h-5 w-5" />
-                הוספת רכב {dir === "to" ? "לחתונה" : "חזרה"}
-              </Button>
-
-              {isLoading ? (
-                <p className="text-center text-muted-foreground py-8">טוען…</p>
-              ) : grouped[dir].length === 0 ? (
-                <EmptyState direction={dir} />
-              ) : (
-                <div className="space-y-3">
-                  {grouped[dir].map((car) => (
-                    <CarCard
-                      key={car.id}
-                      car={car}
-                      onJoin={() => setJoinCar(car)}
-                      onEdit={() => { setEditCar(car); setAddOpen(true); }}
-                    />
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
+          {isLoading ? (
+            <p className="text-center text-muted-foreground py-8">טוען…</p>
+          ) : allCars.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="space-y-3">
+              {allCars.map((car) => (
+                <CarCard
+                  key={car.id}
+                  car={car}
+                  onJoin={() => setJoinCar(car)}
+                  onEdit={() => { setEditCar(car); setAddOpen(true); }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       <CarFormDialog
         open={addOpen}
         onOpenChange={(o) => { setAddOpen(o); if (!o) setEditCar(null); }}
-        direction={tab}
         car={editCar}
         weddingId={wedding.id}
       />
@@ -242,12 +219,12 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-function EmptyState({ direction }: { direction: Direction }) {
+function EmptyState() {
   return (
     <div className="text-center py-12 px-4 rounded-2xl bg-card/50 border border-dashed border-border">
       <CarIcon className="h-10 w-10 mx-auto text-muted-foreground/60" />
       <p className="mt-3 text-muted-foreground">
-        עדיין אין רכבים {direction === "to" ? "לחתונה" : "לחזרה"}.
+        עדיין אין רכבים לחתונה.
         <br />
         היו הראשונים להוסיף!
       </p>

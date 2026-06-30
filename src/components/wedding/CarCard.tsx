@@ -67,7 +67,7 @@ export function CarCard({ car, onJoin, onEdit }: Props) {
             <div className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">
-                {car.from_location} <span className="text-primary mx-1">←</span> {car.to_location}
+                {car.from_location} <span className="text-primary mx-1">↔</span> {car.to_location}
               </span>
             </div>
             {car.departure_time && (

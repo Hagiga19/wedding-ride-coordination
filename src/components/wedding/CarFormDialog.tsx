@@ -14,12 +14,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import type { CarWithPassengers, Direction } from "./types";
+import type { CarWithPassengers } from "./types";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  direction: Direction;
   car: CarWithPassengers | null;
   weddingId: string;
 }
@@ -35,7 +34,7 @@ const empty = {
   notes: "",
 };
 
-export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }: Props) {
+export function CarFormDialog({ open, onOpenChange, car, weddingId }: Props) {
   const editing = !!car;
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -93,7 +92,7 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
       wedding_id: weddingId,
       driver_name: name,
       driver_phone: phone,
-      direction,
+      direction: car?.direction ?? "to",
       from_location: fromL,
       to_location: toL,
       seats_total: form.seats_total,
@@ -120,10 +119,10 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
       <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle>
-            {editing ? "עריכת רכב" : `הוספת רכב ${direction === "to" ? "לחתונה" : "חזרה מהחתונה"}`}
+            {editing ? "עריכת רכב" : "הוספת רכב"}
           </DialogTitle>
           <DialogDescription>
-            פרטי הנוסע יוסיפו את עצמם באמצעות סיסמה.
+            הרכב יוצג כנסיעה הלוך וחזור לחתונה.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -141,10 +140,10 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label={direction === "to" ? "יוצאים מ-" : "יוצאים מ-"}>
+            <Field label="נקודת יציאה">
               <Input value={form.from_location} onChange={(e) => update("from_location", e.target.value)} required />
             </Field>
-            <Field label={direction === "to" ? "מגיעים ל-" : "מגיעים ל-"}>
+            <Field label="מקום החתונה">
               <Input value={form.to_location} onChange={(e) => update("to_location", e.target.value)} required />
             </Field>
           </div>
