@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Heart, Plus, ArrowLeft, Sparkles, Trash2, MapPin, Lock, LogOut } from "lucide-react";
@@ -43,10 +43,13 @@ function makeFallbackSlug(): string {
   return `wedding-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function weddingUrl(wedding: Pick<Wedding, "slug" | "guest_token">): string {
+  return `/w/${encodeURIComponent(wedding.slug)}?access=${encodeURIComponent(wedding.guest_token)}`;
+}
+
 const ADMIN_STORAGE_KEY = "wedding-ride-admin-key";
 
 function Landing() {
-  const navigate = useNavigate();
   const qc = useQueryClient();
   const [adminKey, setAdminKey] = useState("");
   const [adminInput, setAdminInput] = useState("");
@@ -165,7 +168,7 @@ function Landing() {
     setSlug("");
     setSlugTouched(false);
     setFallbackSlug(makeFallbackSlug());
-    navigate({ to: "/w/$slug", params: { slug: data!.slug } });
+    window.location.assign(weddingUrl(data!));
   };
 
   const closeDeleteDialog = () => {
@@ -339,9 +342,8 @@ function Landing() {
                 <ul className="space-y-2">
                   {weddings.map((w) => (
                     <li key={w.id} className="flex items-stretch gap-2">
-                      <Link
-                        to="/w/$slug"
-                        params={{ slug: w.slug }}
+                      <a
+                        href={weddingUrl(w)}
                         className="flex min-w-0 flex-1 items-center justify-between rounded-xl bg-card/70 border border-border hover:border-primary hover:bg-card transition p-4 group"
                       >
                         <div className="text-right">
@@ -355,7 +357,7 @@ function Landing() {
                           <div className="text-xs text-muted-foreground font-mono" dir="ltr">/w/{w.slug}</div>
                         </div>
                         <ArrowLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary transition" />
-                      </Link>
+                      </a>
                       <Button
                         type="button"
                         variant="outline"

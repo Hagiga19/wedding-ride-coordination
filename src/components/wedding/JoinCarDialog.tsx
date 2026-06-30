@@ -20,11 +20,13 @@ interface Props {
   car: CarWithPassengers | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  accessKey: string;
+  adminKey: string;
 }
 
 const empty = { name: "", phone: "", address: "", password: "" };
 
-export function JoinCarDialog({ car, open, onOpenChange }: Props) {
+export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey }: Props) {
   const qc = useQueryClient();
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -67,6 +69,8 @@ export function JoinCarDialog({ car, open, onOpenChange }: Props) {
     setSaving(true);
     const { error } = await supabase.rpc("join_car_with_password", {
       p_car_id: car.id,
+      p_access_key: accessKey,
+      p_admin_key: adminKey || null,
       p_password: password,
       p_name: name,
       p_phone: phone,

@@ -23,6 +23,8 @@ interface Props {
   car: CarWithPassengers | null;
   weddingId: string;
   weddingVenue: string;
+  accessKey: string;
+  adminKey: string;
 }
 
 const empty = {
@@ -36,7 +38,7 @@ const empty = {
   notes: "",
 };
 
-export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue }: Props) {
+export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue, accessKey, adminKey }: Props) {
   const qc = useQueryClient();
   const editing = !!car;
   const [form, setForm] = useState(empty);
@@ -96,6 +98,8 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
       ? await supabase.rpc("update_car_for_wedding", {
           p_wedding_id: weddingId,
           p_car_id: car!.id,
+          p_access_key: accessKey,
+          p_admin_key: adminKey || null,
           p_driver_name: name,
           p_driver_phone: phone,
           p_from_location: fromL,
@@ -107,6 +111,8 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
         })
       : await supabase.rpc("create_car_for_wedding", {
           p_wedding_id: weddingId,
+          p_access_key: accessKey,
+          p_admin_key: adminKey || null,
           p_driver_name: name,
           p_driver_phone: phone,
           p_from_location: fromL,

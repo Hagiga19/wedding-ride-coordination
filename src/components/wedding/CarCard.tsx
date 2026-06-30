@@ -22,9 +22,11 @@ interface Props {
   car: CarWithPassengers;
   onJoin: () => void;
   onEdit: () => void;
+  accessKey: string;
+  adminKey: string;
 }
 
-export function CarCard({ car, onJoin, onEdit }: Props) {
+export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const passengers = car.passengers ?? [];
@@ -36,6 +38,8 @@ export function CarCard({ car, onJoin, onEdit }: Props) {
     const { error } = await supabase.rpc("delete_car_for_wedding", {
       p_wedding_id: car.wedding_id,
       p_car_id: car.id,
+      p_access_key: accessKey,
+      p_admin_key: adminKey || null,
     });
     if (error) toast.error("שגיאה במחיקה");
     else {
@@ -48,6 +52,8 @@ export function CarCard({ car, onJoin, onEdit }: Props) {
     const { error } = await supabase.rpc("delete_passenger_for_wedding", {
       p_wedding_id: car.wedding_id,
       p_passenger_id: id,
+      p_access_key: accessKey,
+      p_admin_key: adminKey || null,
     });
     if (error) toast.error("שגיאה בהסרה");
     else {

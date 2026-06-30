@@ -11,7 +11,16 @@ import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
 import type { CarWithPassengers, Wedding } from "@/components/wedding/types";
 
+type WeddingSearch = {
+  access?: string;
+};
+
+const ADMIN_STORAGE_KEY = "wedding-ride-admin-key";
+
 export const Route = createFileRoute("/w/$slug")({
+  validateSearch: (search: Record<string, unknown>): WeddingSearch => ({
+    access: typeof search.access === "string" ? search.access : undefined,
+  }),
   head: ({ params }) => ({
     meta: [
       { title: `טרמפים — ${params.slug}` },
@@ -44,16 +53,32 @@ function mapsUrl(wedding: Wedding): string | null {
 
 function WeddingBoard() {
   const { slug } = Route.useParams();
+  const { access } = Route.useSearch();
   const qc = useQueryClient();
+  const accessKey = typeof access === "string" ? access.trim() : "";
+  const [adminKey, setAdminKey] = useState("");
+  const [adminLoaded, setAdminLoaded] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editCar, setEditCar] = useState<CarWithPassengers | null>(null);
   const [joinCar, setJoinCar] = useState<CarWithPassengers | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setAdminKey(window.localStorage.getItem(ADMIN_STORAGE_KEY) ?? "");
+    }
+    setAdminLoaded(true);
+  }, []);
+
   const { data: wedding, isLoading: weddingLoading, error: weddingError } = useQuery({
-    queryKey: ["wedding", slug],
+    queryKey: ["wedding", slug, accessKey, adminKey],
+    enabled: adminLoaded || !!accessKey,
     queryFn: async () => {
       const { data, error } = await supabase
-        .rpc("get_wedding_by_slug", { p_slug: slug })
+        .rpc("get_wedding_by_slug", {
+          p_slug: slug,
+          p_access_key: accessKey,
+          p_admin_key: adminKey || null,
+        })
         .maybeSingle();
       if (error) throw error;
       if (!data) throw notFound();
@@ -62,11 +87,13 @@ function WeddingBoard() {
   });
 
   const { data: cars, isLoading } = useQuery({
-    queryKey: ["cars", wedding?.id],
+    queryKey: ["cars", wedding?.id, accessKey, adminKey],
     enabled: !!wedding?.id,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_cars_for_wedding", {
         p_wedding_id: wedding!.id,
+        p_access_key: accessKey,
+        p_admin_key: adminKey || null,
       });
       if (error) throw error;
       return (data ?? []) as CarWithPassengers[];
@@ -103,12 +130,17 @@ function WeddingBoard() {
   );
 
   const handleShare = async () => {
-    const url = window.location.href;
+    const shareAccessKey = accessKey || wedding?.guest_token || "";
+    const url = new URL(window.location.href);
+    url.pathname = `/w/${encodeURIComponent(wedding.slug)}`;
+    url.search = "";
+    url.searchParams.set("access", shareAccessKey);
+
     try {
       if (navigator.share) {
-        await navigator.share({ title: "טרמפים לחתונה", url });
+        await navigator.share({ title: "טרמפים לחתונה", url: url.toString() });
       } else {
-        await navigator.clipboard.writeText(url);
+        await navigator.clipboard.writeText(url.toString());
         toast.success("הקישור הועתק!");
       }
     } catch {
@@ -116,7 +148,7 @@ function WeddingBoard() {
     }
   };
 
-  if (weddingLoading) {
+  if ((!adminLoaded && !accessKey) || weddingLoading) {
     return <div className="min-h-screen flex items-center justify-center text-muted-foreground">טוען…</div>;
   }
   if (weddingError || !wedding) {
@@ -212,6 +244,8 @@ function WeddingBoard() {
                   car={car}
                   onJoin={() => setJoinCar(car)}
                   onEdit={() => { setEditCar(car); setAddOpen(true); }}
+                  accessKey={accessKey}
+                  adminKey={adminKey}
                 />
               ))}
             </div>
@@ -225,11 +259,15 @@ function WeddingBoard() {
         car={editCar}
         weddingId={wedding.id}
         weddingVenue={venueText}
+        accessKey={accessKey}
+        adminKey={adminKey}
       />
       <JoinCarDialog
         car={joinCar}
         open={!!joinCar}
         onOpenChange={(o) => { if (!o) setJoinCar(null); }}
+        accessKey={accessKey}
+        adminKey={adminKey}
       />
     </div>
   );

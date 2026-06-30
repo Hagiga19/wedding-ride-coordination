@@ -118,6 +118,7 @@ export type Database = {
       weddings: {
         Row: {
           created_at: string
+          guest_token: string
           id: string
           name: string
           slug: string
@@ -126,6 +127,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          guest_token?: string
           id?: string
           name: string
           slug: string
@@ -134,6 +136,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          guest_token?: string
           id?: string
           name?: string
           slug?: string
@@ -149,6 +152,8 @@ export type Database = {
     Functions: {
       create_car_for_wedding: {
         Args: {
+          p_access_key: string
+          p_admin_key: string | null
           p_departure_time: string | null
           p_driver_name: string
           p_driver_phone: string
@@ -172,11 +177,21 @@ export type Database = {
         Returns: Database["public"]["Tables"]["weddings"]["Row"][]
       }
       delete_car_for_wedding: {
-        Args: { p_car_id: string; p_wedding_id: string }
+        Args: {
+          p_access_key: string
+          p_admin_key: string | null
+          p_car_id: string
+          p_wedding_id: string
+        }
         Returns: string
       }
       delete_passenger_for_wedding: {
-        Args: { p_passenger_id: string; p_wedding_id: string }
+        Args: {
+          p_access_key: string
+          p_admin_key: string | null
+          p_passenger_id: string
+          p_wedding_id: string
+        }
         Returns: string
       }
       delete_wedding_admin: {
@@ -184,12 +199,28 @@ export type Database = {
         Returns: string
       }
       get_cars_for_wedding: {
-        Args: { p_wedding_id: string }
+        Args: {
+          p_access_key: string
+          p_admin_key: string | null
+          p_wedding_id: string
+        }
         Returns: Json
       }
       get_wedding_by_slug: {
-        Args: { p_slug: string }
+        Args: {
+          p_access_key: string
+          p_admin_key: string | null
+          p_slug: string
+        }
         Returns: Database["public"]["Tables"]["weddings"]["Row"][]
+      }
+      has_wedding_access: {
+        Args: {
+          p_access_key: string
+          p_admin_key?: string | null
+          p_wedding_id: string
+        }
+        Returns: boolean
       }
       is_wedding_admin: {
         Args: { p_admin_key: string }
@@ -197,6 +228,8 @@ export type Database = {
       }
       join_car_with_password: {
         Args: {
+          p_access_key: string
+          p_admin_key: string | null
           p_address: string
           p_car_id: string
           p_name: string
@@ -211,6 +244,8 @@ export type Database = {
       }
       update_car_for_wedding: {
         Args: {
+          p_access_key: string
+          p_admin_key: string | null
           p_car_id: string
           p_departure_time: string | null
           p_driver_name: string
