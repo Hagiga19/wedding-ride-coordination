@@ -147,6 +147,54 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_car_for_wedding: {
+        Args: {
+          p_departure_time: string | null
+          p_driver_name: string
+          p_driver_phone: string
+          p_from_location: string
+          p_notes: string | null
+          p_password: string
+          p_seats_total: number
+          p_to_location: string
+          p_wedding_id: string
+        }
+        Returns: Database["public"]["Tables"]["cars"]["Row"][]
+      }
+      create_wedding_admin: {
+        Args: {
+          p_admin_key: string
+          p_name: string
+          p_slug: string
+          p_venue_address: string
+          p_venue_name: string
+        }
+        Returns: Database["public"]["Tables"]["weddings"]["Row"][]
+      }
+      delete_car_for_wedding: {
+        Args: { p_car_id: string; p_wedding_id: string }
+        Returns: string
+      }
+      delete_passenger_for_wedding: {
+        Args: { p_passenger_id: string; p_wedding_id: string }
+        Returns: string
+      }
+      delete_wedding_admin: {
+        Args: { p_admin_key: string; p_wedding_id: string }
+        Returns: string
+      }
+      get_cars_for_wedding: {
+        Args: { p_wedding_id: string }
+        Returns: Json
+      }
+      get_wedding_by_slug: {
+        Args: { p_slug: string }
+        Returns: Database["public"]["Tables"]["weddings"]["Row"][]
+      }
+      is_wedding_admin: {
+        Args: { p_admin_key: string }
+        Returns: boolean
+      }
       join_car_with_password: {
         Args: {
           p_address: string
@@ -156,6 +204,25 @@ export type Database = {
           p_phone: string
         }
         Returns: Database["public"]["Tables"]["passengers"]["Row"]
+      }
+      list_weddings_admin: {
+        Args: { p_admin_key: string }
+        Returns: Database["public"]["Tables"]["weddings"]["Row"][]
+      }
+      update_car_for_wedding: {
+        Args: {
+          p_car_id: string
+          p_departure_time: string | null
+          p_driver_name: string
+          p_driver_phone: string
+          p_from_location: string
+          p_notes: string | null
+          p_password: string
+          p_seats_total: number
+          p_to_location: string
+          p_wedding_id: string
+        }
+        Returns: Database["public"]["Tables"]["cars"]["Row"][]
       }
     }
     Enums: {

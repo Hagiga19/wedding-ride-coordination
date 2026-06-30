@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +37,7 @@ const empty = {
 };
 
 export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue }: Props) {
+  const qc = useQueryClient();
   const editing = !!car;
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
@@ -90,28 +92,37 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
     }
 
     setSaving(true);
-    const payload = {
-      wedding_id: weddingId,
-      driver_name: name,
-      driver_phone: phone,
-      direction: car?.direction ?? "to",
-      from_location: fromL,
-      to_location: toL,
-      seats_total: form.seats_total,
-      password,
-      departure_time: form.departure_time.trim() || null,
-      notes: form.notes.trim() || null,
-    };
-
     const { error } = editing
-      ? await supabase.from("cars").update(payload).eq("id", car!.id)
-      : await supabase.from("cars").insert(payload);
+      ? await supabase.rpc("update_car_for_wedding", {
+          p_wedding_id: weddingId,
+          p_car_id: car!.id,
+          p_driver_name: name,
+          p_driver_phone: phone,
+          p_from_location: fromL,
+          p_to_location: toL,
+          p_seats_total: form.seats_total,
+          p_password: password,
+          p_departure_time: form.departure_time.trim() || null,
+          p_notes: form.notes.trim() || null,
+        })
+      : await supabase.rpc("create_car_for_wedding", {
+          p_wedding_id: weddingId,
+          p_driver_name: name,
+          p_driver_phone: phone,
+          p_from_location: fromL,
+          p_to_location: toL,
+          p_seats_total: form.seats_total,
+          p_password: password,
+          p_departure_time: form.departure_time.trim() || null,
+          p_notes: form.notes.trim() || null,
+        });
     setSaving(false);
 
     if (error) {
       toast.error("שגיאה בשמירה: " + error.message);
       return;
     }
+    qc.invalidateQueries({ queryKey: ["cars", weddingId] });
     toast.success(editing ? "הרכב עודכן" : "הרכב נוסף בהצלחה");
     onOpenChange(false);
   };

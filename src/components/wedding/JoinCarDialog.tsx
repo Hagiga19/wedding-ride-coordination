@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +25,7 @@ interface Props {
 const empty = { name: "", phone: "", address: "", password: "" };
 
 export function JoinCarDialog({ car, open, onOpenChange }: Props) {
+  const qc = useQueryClient();
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
 
@@ -76,6 +78,7 @@ export function JoinCarDialog({ car, open, onOpenChange }: Props) {
       toast.error("שגיאה בהוספה: " + error.message);
       return;
     }
+    qc.invalidateQueries({ queryKey: ["cars", car.wedding_id] });
     toast.success(`נוספת לרכב של ${car.driver_name}!`);
     onOpenChange(false);
   };

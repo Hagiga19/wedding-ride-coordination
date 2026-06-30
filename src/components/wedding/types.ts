@@ -21,6 +21,7 @@ export interface Passenger {
 
 export interface Car {
   id: string;
+  wedding_id: string;
   driver_name: string;
   driver_phone: string;
   direction: Direction;

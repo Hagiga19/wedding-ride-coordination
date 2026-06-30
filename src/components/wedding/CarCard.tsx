@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Phone, MapPin, Clock, Users, Trash2, Pencil, UserPlus, MessageCircle, Home, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export function CarCard({ car, onJoin, onEdit }: Props) {
+  const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const passengers = car.passengers ?? [];
   const seatsLeft = car.seats_total - passengers.length;
@@ -31,15 +33,27 @@ export function CarCard({ car, onJoin, onEdit }: Props) {
   const full = seatsLeft <= 0;
 
   const deleteCar = async () => {
-    const { error } = await supabase.from("cars").delete().eq("id", car.id);
+    const { error } = await supabase.rpc("delete_car_for_wedding", {
+      p_wedding_id: car.wedding_id,
+      p_car_id: car.id,
+    });
     if (error) toast.error("שגיאה במחיקה");
-    else toast.success("הרכב נמחק");
+    else {
+      qc.invalidateQueries({ queryKey: ["cars", car.wedding_id] });
+      toast.success("הרכב נמחק");
+    }
   };
 
   const removePassenger = async (id: string, name: string) => {
-    const { error } = await supabase.from("passengers").delete().eq("id", id);
+    const { error } = await supabase.rpc("delete_passenger_for_wedding", {
+      p_wedding_id: car.wedding_id,
+      p_passenger_id: id,
+    });
     if (error) toast.error("שגיאה בהסרה");
-    else toast.success(`${name} הוסר מהרכב`);
+    else {
+      qc.invalidateQueries({ queryKey: ["cars", car.wedding_id] });
+      toast.success(`${name} הוסר מהרכב`);
+    }
   };
 
   const waLink = (phone: string, msg: string) => {

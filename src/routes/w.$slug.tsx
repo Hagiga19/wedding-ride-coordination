@@ -53,9 +53,7 @@ function WeddingBoard() {
     queryKey: ["wedding", slug],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("weddings")
-        .select("*")
-        .eq("slug", slug)
+        .rpc("get_wedding_by_slug", { p_slug: slug })
         .maybeSingle();
       if (error) throw error;
       if (!data) throw notFound();
@@ -67,11 +65,9 @@ function WeddingBoard() {
     queryKey: ["cars", wedding?.id],
     enabled: !!wedding?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("cars")
-        .select("*, passengers(*)")
-        .eq("wedding_id", wedding!.id)
-        .order("created_at", { ascending: true });
+      const { data, error } = await supabase.rpc("get_cars_for_wedding", {
+        p_wedding_id: wedding!.id,
+      });
       if (error) throw error;
       return (data ?? []) as CarWithPassengers[];
     },
