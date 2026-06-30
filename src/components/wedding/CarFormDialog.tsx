@@ -21,6 +21,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   car: CarWithPassengers | null;
   weddingId: string;
+  weddingVenue: string;
 }
 
 const empty = {
@@ -34,10 +35,11 @@ const empty = {
   notes: "",
 };
 
-export function CarFormDialog({ open, onOpenChange, car, weddingId }: Props) {
+export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue }: Props) {
   const editing = !!car;
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const fixedVenue = weddingVenue.trim();
 
   useEffect(() => {
     if (open) {
@@ -46,17 +48,17 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId }: Props) {
           driver_name: car.driver_name,
           driver_phone: car.driver_phone,
           from_location: car.from_location,
-          to_location: car.to_location,
+          to_location: fixedVenue || car.to_location,
           seats_total: car.seats_total,
           password: car.password,
           departure_time: car.departure_time ?? "",
           notes: car.notes ?? "",
         });
       } else {
-        setForm(empty);
+        setForm({ ...empty, to_location: fixedVenue });
       }
     }
-  }, [open, car]);
+  }, [open, car, fixedVenue]);
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -67,7 +69,7 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId }: Props) {
     const name = form.driver_name.trim();
     const phone = form.driver_phone.trim();
     const fromL = form.from_location.trim();
-    const toL = form.to_location.trim();
+    const toL = fixedVenue || form.to_location.trim();
     const password = form.password.trim();
 
     if (!name || !phone || !fromL || !toL) {
@@ -144,7 +146,18 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId }: Props) {
               <Input value={form.from_location} onChange={(e) => update("from_location", e.target.value)} required />
             </Field>
             <Field label="מקום החתונה">
-              <Input value={form.to_location} onChange={(e) => update("to_location", e.target.value)} required />
+              <Input
+                value={fixedVenue || form.to_location}
+                onChange={(e) => update("to_location", e.target.value)}
+                readOnly={!!fixedVenue}
+                className={fixedVenue ? "bg-muted/60 text-muted-foreground" : undefined}
+                required
+              />
+              {fixedVenue && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  נקבע ביצירת החתונה.
+                </p>
+              )}
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">

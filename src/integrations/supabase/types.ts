@@ -121,18 +121,24 @@ export type Database = {
           id: string
           name: string
           slug: string
+          venue_address: string
+          venue_name: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           slug: string
+          venue_address?: string
+          venue_name?: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           slug?: string
+          venue_address?: string
+          venue_name?: string
         }
         Relationships: []
       }

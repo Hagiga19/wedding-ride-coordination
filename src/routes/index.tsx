@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, ArrowLeft, Sparkles, Trash2 } from "lucide-react";
+import { Heart, Plus, ArrowLeft, Sparkles, Trash2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -39,12 +39,19 @@ function slugify(input: string): string {
     .slice(0, 40);
 }
 
+function makeFallbackSlug(): string {
+  return `wedding-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function Landing() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [name, setName] = useState("");
+  const [venueName, setVenueName] = useState("");
+  const [venueAddress, setVenueAddress] = useState("");
   const [slug, setSlug] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [fallbackSlug, setFallbackSlug] = useState(makeFallbackSlug);
   const [creating, setCreating] = useState(false);
   const [deleteWedding, setDeleteWedding] = useState<Wedding | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -61,19 +68,36 @@ function Landing() {
     },
   });
 
-  const effectiveSlug = slugTouched ? slugify(slug) : slugify(name);
+  const effectiveSlug = slugify(slug);
+
+  const handleNameChange = (value: string) => {
+    setName(value);
+    if (!slugTouched) {
+      const nextSlug = slugify(value);
+      setSlug(value.trim() ? nextSlug || fallbackSlug : "");
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalName = name.trim();
+    const finalVenueName = venueName.trim();
+    const finalVenueAddress = venueAddress.trim();
     const finalSlug = effectiveSlug;
     if (!finalName) return toast.error("יש להזין שם לחתונה");
+    if (!finalVenueName) return toast.error("יש להזין את מקום החתונה");
+    if (!finalVenueAddress) return toast.error("יש להזין כתובת לניווט");
     if (finalSlug.length < 2) return toast.error("כתובת ה־URL חייבת לכלול לפחות 2 תווים (אותיות באנגלית/ספרות/מקפים)");
 
     setCreating(true);
     const { data, error } = await supabase
       .from("weddings")
-      .insert({ name: finalName, slug: finalSlug })
+      .insert({
+        name: finalName,
+        slug: finalSlug,
+        venue_name: finalVenueName,
+        venue_address: finalVenueAddress,
+      })
       .select()
       .maybeSingle();
     setCreating(false);
@@ -88,6 +112,12 @@ function Landing() {
     }
     qc.invalidateQueries({ queryKey: ["weddings"] });
     toast.success("החתונה נוצרה!");
+    setName("");
+    setVenueName("");
+    setVenueAddress("");
+    setSlug("");
+    setSlugTouched(false);
+    setFallbackSlug(makeFallbackSlug());
     navigate({ to: "/w/$slug", params: { slug: data!.slug } });
   };
 
@@ -153,25 +183,48 @@ function Landing() {
               <Label>שם החתונה</Label>
               <Input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="לדוגמה: דנה ויוסי"
                 required
               />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>מקום החתונה</Label>
+                <Input
+                  value={venueName}
+                  onChange={(e) => setVenueName(e.target.value)}
+                  placeholder="לדוגמה: גן האירועים עדן"
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>כתובת לניווט</Label>
+                <Input
+                  value={venueAddress}
+                  onChange={(e) => setVenueAddress(e.target.value)}
+                  placeholder="לדוגמה: דרך הים 12, קיסריה"
+                  required
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label>כתובת הקישור</Label>
               <div className="flex items-center gap-1 text-sm" dir="ltr">
                 <span className="text-muted-foreground">/w/</span>
                 <Input
-                  value={slugTouched ? slug : effectiveSlug}
-                  onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); }}
+                  value={slug}
+                  onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)); }}
                   placeholder="dana-yossi"
                   className="font-mono"
                   dir="ltr"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                אותיות אנגלית קטנות, ספרות ומקפים בלבד. זה מה שיופיע בקישור שתשתפו.
+                שם החתונה יכול להיות בעברית. הקישור הוא כתובת טכנית לשיתוף, ואפשר להשאיר אותו אוטומטי.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                כפתור ניווט ייפתח לפי כתובת החתונה, והיעד ימולא אוטומטית בכל רכב.
               </p>
             </div>
             <Button type="submit" disabled={creating} className="w-full h-11 gap-2">
@@ -197,6 +250,12 @@ function Landing() {
                   >
                     <div className="text-right">
                       <div className="font-semibold text-primary">{w.name}</div>
+                      {(w.venue_name || w.venue_address) && (
+                        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate">{w.venue_name || w.venue_address}</span>
+                        </div>
+                      )}
                       <div className="text-xs text-muted-foreground font-mono" dir="ltr">/w/{w.slug}</div>
                     </div>
                     <ArrowLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary transition" />

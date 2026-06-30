@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight } from "lucide-react";
+import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight, MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,15 @@ export const Route = createFileRoute("/w/$slug")({
     </div>
   ),
 });
+
+function weddingVenueText(wedding: Wedding): string {
+  return [wedding.venue_name, wedding.venue_address].filter(Boolean).join(" - ");
+}
+
+function mapsUrl(wedding: Wedding): string | null {
+  const query = [wedding.venue_name, wedding.venue_address].filter(Boolean).join(", ");
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : null;
+}
 
 function WeddingBoard() {
   const { slug } = Route.useParams();
@@ -123,6 +132,9 @@ function WeddingBoard() {
     );
   }
 
+  const venueText = weddingVenueText(wedding);
+  const navigationUrl = mapsUrl(wedding);
+
   return (
     <div className="min-h-screen pb-24">
       {/* Header */}
@@ -141,6 +153,17 @@ function WeddingBoard() {
         <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight">
           {wedding.name}
         </h1>
+        {venueText && (
+          <div className="mt-4 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+            <div className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-card/70 border border-border px-3 py-1.5">
+              <MapPin className="h-4 w-4 shrink-0 text-primary" />
+              <span className="truncate">{wedding.venue_name || wedding.venue_address}</span>
+            </div>
+            {wedding.venue_address && (
+              <div className="max-w-md truncate text-xs">{wedding.venue_address}</div>
+            )}
+          </div>
+        )}
         <p className="mt-3 text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
           הוסיפו רכב לנסיעה הלוך וחזור, או הצטרפו לרכב של חבר.
           <br />
@@ -151,6 +174,14 @@ function WeddingBoard() {
             <Share2 className="h-4 w-4" />
             שיתוף הקישור
           </Button>
+          {navigationUrl && (
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <a href={navigationUrl} target="_blank" rel="noreferrer">
+                <Navigation className="h-4 w-4" />
+                ניווט
+              </a>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -197,6 +228,7 @@ function WeddingBoard() {
         onOpenChange={(o) => { setAddOpen(o); if (!o) setEditCar(null); }}
         car={editCar}
         weddingId={wedding.id}
+        weddingVenue={venueText}
       />
       <JoinCarDialog
         car={joinCar}

@@ -86,7 +86,7 @@ export function JoinCarDialog({ car, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>הצטרפות לרכב של {car.driver_name}</DialogTitle>
           <DialogDescription>
-            {car.from_location} ← {car.to_location}
+            {car.from_location} ↔ {car.to_location}
             {car.departure_time ? ` · ${car.departure_time}` : ""} · נותרו {seatsLeft} מקומות
           </DialogDescription>
         </DialogHeader>
