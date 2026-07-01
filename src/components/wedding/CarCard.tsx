@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { languageDirection, weddingCopy, type WeddingLanguage } from "./i18n";
 import type { CarWithPassengers } from "./types";
 
 interface Props {
@@ -24,11 +25,13 @@ interface Props {
   onEdit: () => void;
   accessKey: string;
   adminKey: string;
+  language: WeddingLanguage;
 }
 
-export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
+export function CarCard({ car, onJoin, onEdit, accessKey, adminKey, language }: Props) {
   const qc = useQueryClient();
   const [expanded, setExpanded] = useState(false);
+  const copy = weddingCopy[language].carCard;
   const passengers = car.passengers ?? [];
   const seatsLeft = car.seats_total - passengers.length;
   const seatBarSlots = Math.min(Math.max(car.seats_total, 0), 20);
@@ -41,10 +44,10 @@ export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
       p_access_key: accessKey,
       p_admin_key: adminKey || null,
     });
-    if (error) toast.error("שגיאה במחיקה");
+    if (error) toast.error(copy.deleteError);
     else {
       qc.invalidateQueries({ queryKey: ["cars", car.wedding_id] });
-      toast.success("הרכב נמחק");
+      toast.success(copy.deleteSuccess);
     }
   };
 
@@ -55,10 +58,10 @@ export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
       p_access_key: accessKey,
       p_admin_key: adminKey || null,
     });
-    if (error) toast.error("שגיאה בהסרה");
+    if (error) toast.error(copy.removeError);
     else {
       qc.invalidateQueries({ queryKey: ["cars", car.wedding_id] });
-      toast.success(`${name} הוסר מהרכב`);
+      toast.success(copy.removeSuccess(name));
     }
   };
 
@@ -81,7 +84,7 @@ export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
                     : "text-xs px-2 py-0.5 rounded-full bg-gold/30 text-gold-foreground font-medium"
                 }
               >
-                {full ? "מלא" : `${seatsLeft} פנויים`}
+                {full ? copy.full : copy.available(seatsLeft)}
               </span>
             </div>
             <div className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -104,8 +107,7 @@ export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
           </div>
         </div>
 
-        {/* Seats bar */}
-        <div className="mt-3 flex items-center gap-1.5" aria-label={`${passengers.length} מתוך ${car.seats_total}`}>
+        <div className="mt-3 flex items-center gap-1.5" aria-label={copy.seatsAria(passengers.length, car.seats_total)}>
           <Users className="h-3.5 w-3.5 text-muted-foreground" />
           <div className="flex gap-1 flex-1">
             {Array.from({ length: seatBarSlots }).map((_, i) => (
@@ -124,46 +126,35 @@ export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
           </span>
         </div>
 
-        {/* Actions */}
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button
-            onClick={onJoin}
-            disabled={full}
-            className="flex-1 gap-1.5 min-w-[140px]"
-            size="sm"
-          >
+          <Button onClick={onJoin} disabled={full} className="flex-1 gap-1.5 min-w-[140px]" size="sm">
             <UserPlus className="h-4 w-4" />
-            הצטרף לרכב הזה
+            {copy.join}
           </Button>
           <Button asChild variant="outline" size="sm" className="gap-1.5">
             <a href={`tel:${car.driver_phone}`}>
               <Phone className="h-4 w-4" />
-              חיוג
+              {copy.call}
             </a>
           </Button>
           <Button asChild variant="outline" size="sm" className="gap-1.5">
             <a
-              href={waLink(car.driver_phone, `היי ${car.driver_name}, רוצה להצטרף לרכב שלך לחתונה. אפשר לקבל את הסיסמה?`)}
+              href={waLink(car.driver_phone, copy.whatsappMessage(car.driver_name))}
               target="_blank"
               rel="noreferrer"
             >
               <MessageCircle className="h-4 w-4" />
-              ווטסאפ
+              {copy.whatsapp}
             </a>
           </Button>
         </div>
 
-        {/* Expand passengers + manage */}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="mt-3 w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          <span>
-            {passengers.length === 0
-              ? "אין עדיין נוסעים"
-              : `${passengers.length} נוסעים ברכב`}
-          </span>
+          <span>{passengers.length === 0 ? copy.noPassengers : copy.passengerCount(passengers.length)}</span>
           <ChevronDown className={"h-3.5 w-3.5 transition-transform " + (expanded ? "rotate-180" : "")} />
         </button>
 
@@ -184,12 +175,15 @@ export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
                       </div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1">
                         <Phone className="h-3 w-3" />
-                        <a href={`tel:${p.phone}`} className="hover:underline">{p.phone}</a>
+                        <a href={`tel:${p.phone}`} className="hover:underline">
+                          {p.phone}
+                        </a>
                       </div>
                     </div>
                     <ConfirmDelete
-                      title={`להסיר את ${p.name}?`}
+                      title={copy.removePassengerTitle(p.name)}
                       onConfirm={() => removePassenger(p.id, p.name)}
+                      language={language}
                     >
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-3.5 w-3.5" />
@@ -202,16 +196,17 @@ export function CarCard({ car, onJoin, onEdit, accessKey, adminKey }: Props) {
             <div className="flex gap-2 pt-1">
               <Button onClick={onEdit} variant="ghost" size="sm" className="gap-1.5 text-muted-foreground">
                 <Pencil className="h-3.5 w-3.5" />
-                עריכת הרכב
+                {copy.editCar}
               </Button>
               <ConfirmDelete
-                title="למחוק את הרכב הזה?"
-                description="כל הנוסעים יוסרו מהרכב. לא ניתן לבטל פעולה זו."
+                title={copy.deleteCarTitle}
+                description={copy.deleteCarDescription}
                 onConfirm={deleteCar}
+                language={language}
               >
                 <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-destructive">
                   <Trash2 className="h-3.5 w-3.5" />
-                  מחיקה
+                  {copy.deleteCar}
                 </Button>
               </ConfirmDelete>
             </div>
@@ -227,23 +222,27 @@ function ConfirmDelete({
   title,
   description,
   onConfirm,
+  language,
 }: {
   children: React.ReactNode;
   title: string;
   description?: string;
   onConfirm: () => void;
+  language: WeddingLanguage;
 }) {
+  const copy = weddingCopy[language].carCard;
+
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
-      <AlertDialogContent dir="rtl">
+      <AlertDialogContent dir={languageDirection(language)}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           {description && <AlertDialogDescription>{description}</AlertDialogDescription>}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>ביטול</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>מחיקה</AlertDialogAction>
+          <AlertDialogCancel>{copy.cancel}</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>{copy.delete}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

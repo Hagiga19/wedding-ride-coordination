@@ -1,7 +1,17 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight, MapPin, Navigation } from "lucide-react";
+import {
+  Heart,
+  Plus,
+  Share2,
+  Users,
+  UserPlus,
+  Car as CarIcon,
+  ArrowRight,
+  MapPin,
+  Navigation,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +19,13 @@ import { Button } from "@/components/ui/button";
 import { CarFormDialog } from "@/components/wedding/CarFormDialog";
 import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
+import {
+  isWeddingLanguage,
+  languageDirection,
+  WEDDING_LANGUAGE_STORAGE_KEY,
+  weddingCopy,
+  type WeddingLanguage,
+} from "@/components/wedding/i18n";
 import type { CarWithPassengers, Wedding } from "@/components/wedding/types";
 
 type WeddingSearch = {
@@ -23,21 +40,25 @@ export const Route = createFileRoute("/w/$slug")({
   }),
   head: ({ params }) => ({
     meta: [
-      { title: `טרמפים — ${params.slug}` },
-      { name: "description", content: "תיאום טרמפים — הוסיפו רכב או הצטרפו לרכב של חבר" },
+      { title: `${weddingCopy.he.page.metaTitlePrefix} - ${params.slug}` },
+      { name: "description", content: weddingCopy.he.page.metaDescription },
     ],
   }),
   component: WeddingBoard,
   notFoundComponent: () => (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center gap-4">
-      <h1 className="text-2xl font-bold text-primary">החתונה לא נמצאה</h1>
-      <p className="text-muted-foreground">בדקו את הקישור או צרו חתונה חדשה.</p>
-      <Link to="/" className="underline text-primary">חזרה לדף הבית</Link>
+      <h1 className="text-2xl font-bold text-primary">{weddingCopy.he.page.notFoundTitle}</h1>
+      <p className="text-muted-foreground">{weddingCopy.he.page.notFoundDescription}</p>
+      <Link to="/" className="underline text-primary">
+        {weddingCopy.he.page.backHome}
+      </Link>
     </div>
   ),
   errorComponent: ({ reset }) => (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <button onClick={reset} className="underline">נסה שוב</button>
+      <button onClick={reset} className="underline">
+        {weddingCopy.he.page.retry}
+      </button>
     </div>
   ),
 });
@@ -58,16 +79,28 @@ function WeddingBoard() {
   const accessKey = typeof access === "string" ? access.trim() : "";
   const [adminKey, setAdminKey] = useState("");
   const [adminLoaded, setAdminLoaded] = useState(false);
+  const [language, setLanguage] = useState<WeddingLanguage>("he");
   const [addOpen, setAddOpen] = useState(false);
   const [editCar, setEditCar] = useState<CarWithPassengers | null>(null);
   const [joinCar, setJoinCar] = useState<CarWithPassengers | null>(null);
+  const copy = weddingCopy[language];
+  const dir = languageDirection(language);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setAdminKey(window.localStorage.getItem(ADMIN_STORAGE_KEY) ?? "");
+      const storedLanguage = window.localStorage.getItem(WEDDING_LANGUAGE_STORAGE_KEY);
+      if (isWeddingLanguage(storedLanguage)) {
+        setLanguage(storedLanguage);
+      }
     }
     setAdminLoaded(true);
   }, []);
+
+  const updateLanguage = (nextLanguage: WeddingLanguage) => {
+    setLanguage(nextLanguage);
+    window.localStorage.setItem(WEDDING_LANGUAGE_STORAGE_KEY, nextLanguage);
+  };
 
   const { data: wedding, isLoading: weddingLoading, error: weddingError } = useQuery({
     queryKey: ["wedding", slug, accessKey, adminKey],
@@ -100,7 +133,6 @@ function WeddingBoard() {
     },
   });
 
-  // Realtime: invalidate on any change for this wedding
   useEffect(() => {
     if (!wedding?.id) return;
     const channel = supabase
@@ -116,7 +148,6 @@ function WeddingBoard() {
       supabase.removeChannel(channel);
     };
   }, [qc, wedding?.id]);
-
 
   const allCars = useMemo(() => cars ?? [], [cars]);
 
@@ -138,10 +169,10 @@ function WeddingBoard() {
 
     try {
       if (navigator.share) {
-        await navigator.share({ title: "טרמפים לחתונה", url: url.toString() });
+        await navigator.share({ title: copy.page.shareTitle, url: url.toString() });
       } else {
         await navigator.clipboard.writeText(url.toString());
-        toast.success("הקישור הועתק!");
+        toast.success(copy.page.shareSuccess);
       }
     } catch {
       /* user cancelled */
@@ -149,13 +180,15 @@ function WeddingBoard() {
   };
 
   if ((!adminLoaded && !accessKey) || weddingLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">טוען…</div>;
+    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{copy.page.loading}</div>;
   }
   if (weddingError || !wedding) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center gap-4">
-        <h1 className="text-2xl font-bold text-primary">החתונה לא נמצאה</h1>
-        <Link to="/" className="underline text-primary">חזרה לדף הבית</Link>
+      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center gap-4" dir={dir}>
+        <h1 className="text-2xl font-bold text-primary">{copy.page.notFoundTitle}</h1>
+        <Link to="/" className="underline text-primary">
+          {copy.page.backHome}
+        </Link>
       </div>
     );
   }
@@ -164,17 +197,47 @@ function WeddingBoard() {
   const navigationUrl = mapsUrl(wedding);
 
   return (
-    <div className="min-h-screen pb-24">
-      {/* Header */}
+    <div className="min-h-screen pb-24" dir={dir} lang={language}>
       <header className="px-4 pt-8 pb-6 text-center">
-        <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-3">
-          <ArrowRight className="h-3 w-3" />
-          כל החתונות
-        </Link>
+        <div className="mb-4 flex items-center justify-center gap-2">
+          {adminKey && (
+            <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
+              <ArrowRight className="h-3 w-3" />
+              {copy.page.managementLink}
+            </Link>
+          )}
+          <div
+            aria-label={copy.page.languageLabel}
+            className="inline-flex overflow-hidden rounded-full border border-border bg-card/70 p-0.5 text-xs shadow-card"
+            role="group"
+          >
+            <button
+              type="button"
+              className={
+                "rounded-full px-3 py-1 transition " +
+                (language === "he" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")
+              }
+              onClick={() => updateLanguage("he")}
+            >
+              {copy.page.hebrew}
+            </button>
+            <button
+              type="button"
+              className={
+                "rounded-full px-3 py-1 transition " +
+                (language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")
+              }
+              onClick={() => updateLanguage("en")}
+            >
+              {copy.page.english}
+            </button>
+          </div>
+        </div>
+
         <div className="inline-flex items-center justify-center gap-2 text-gold mb-3">
           <Heart className="h-5 w-5 fill-current" />
           <span className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            תיאום טרמפים
+            {copy.page.eyebrow}
           </span>
           <Heart className="h-5 w-5 fill-current" />
         </div>
@@ -193,49 +256,49 @@ function WeddingBoard() {
           </div>
         )}
         <p className="mt-3 text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
-          הוסיפו רכב לנסיעה הלוך וחזור, או הצטרפו לרכב של חבר.
+          {copy.page.introLine1}
           <br />
-          כדי להצטרף, תזדקקו לסיסמה בת 4 תווים מהנהג.
+          {copy.page.introLine2}
         </p>
         <div className="mt-5 flex items-center justify-center gap-2">
           <Button onClick={handleShare} variant="outline" size="sm" className="gap-2">
             <Share2 className="h-4 w-4" />
-            שיתוף הקישור
+            {copy.page.shareButton}
           </Button>
           {navigationUrl && (
             <Button asChild variant="outline" size="sm" className="gap-2">
               <a href={navigationUrl} target="_blank" rel="noreferrer">
                 <Navigation className="h-4 w-4" />
-                ניווט
+                {copy.page.navigate}
               </a>
             </Button>
           )}
         </div>
       </header>
 
-
-      {/* Main */}
       <main className="px-4 max-w-2xl mx-auto">
         <div className="space-y-4">
-          {/* Summary */}
           <div className="grid grid-cols-3 gap-2 text-center">
-            <Stat icon={<CarIcon className="h-4 w-4" />} label="רכבים" value={counts.cars} />
-            <Stat icon={<Users className="h-4 w-4" />} label="נוסעים" value={counts.passengers} />
-            <Stat icon={<UserPlus className="h-4 w-4" />} label="מקומות פנויים" value={counts.seatsLeft} />
+            <Stat icon={<CarIcon className="h-4 w-4" />} label={copy.page.cars} value={counts.cars} />
+            <Stat icon={<Users className="h-4 w-4" />} label={copy.page.passengers} value={counts.passengers} />
+            <Stat icon={<UserPlus className="h-4 w-4" />} label={copy.page.seatsLeft} value={counts.seatsLeft} />
           </div>
 
           <Button
-            onClick={() => { setEditCar(null); setAddOpen(true); }}
+            onClick={() => {
+              setEditCar(null);
+              setAddOpen(true);
+            }}
             className="w-full h-12 gap-2 text-base shadow-soft"
           >
             <Plus className="h-5 w-5" />
-            הוספת רכב
+            {copy.page.addCar}
           </Button>
 
           {isLoading ? (
-            <p className="text-center text-muted-foreground py-8">טוען…</p>
+            <p className="text-center text-muted-foreground py-8">{copy.page.loading}</p>
           ) : allCars.length === 0 ? (
-            <EmptyState />
+            <EmptyState language={language} />
           ) : (
             <div className="space-y-3">
               {allCars.map((car) => (
@@ -243,9 +306,13 @@ function WeddingBoard() {
                   key={car.id}
                   car={car}
                   onJoin={() => setJoinCar(car)}
-                  onEdit={() => { setEditCar(car); setAddOpen(true); }}
+                  onEdit={() => {
+                    setEditCar(car);
+                    setAddOpen(true);
+                  }}
                   accessKey={accessKey}
                   adminKey={adminKey}
+                  language={language}
                 />
               ))}
             </div>
@@ -255,19 +322,26 @@ function WeddingBoard() {
 
       <CarFormDialog
         open={addOpen}
-        onOpenChange={(o) => { setAddOpen(o); if (!o) setEditCar(null); }}
+        onOpenChange={(o) => {
+          setAddOpen(o);
+          if (!o) setEditCar(null);
+        }}
         car={editCar}
         weddingId={wedding.id}
         weddingVenue={venueText}
         accessKey={accessKey}
         adminKey={adminKey}
+        language={language}
       />
       <JoinCarDialog
         car={joinCar}
         open={!!joinCar}
-        onOpenChange={(o) => { if (!o) setJoinCar(null); }}
+        onOpenChange={(o) => {
+          if (!o) setJoinCar(null);
+        }}
         accessKey={accessKey}
         adminKey={adminKey}
+        language={language}
       />
     </div>
   );
@@ -285,14 +359,16 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-function EmptyState() {
+function EmptyState({ language }: { language: WeddingLanguage }) {
+  const copy = weddingCopy[language].page;
+
   return (
     <div className="text-center py-12 px-4 rounded-2xl bg-card/50 border border-dashed border-border">
       <CarIcon className="h-10 w-10 mx-auto text-muted-foreground/60" />
       <p className="mt-3 text-muted-foreground">
-        עדיין אין רכבים לחתונה.
+        {copy.emptyLine1}
         <br />
-        היו הראשונים להוסיף!
+        {copy.emptyLine2}
       </p>
     </div>
   );

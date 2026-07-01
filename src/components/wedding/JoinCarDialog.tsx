@@ -14,6 +14,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { languageDirection, weddingCopy, type WeddingLanguage } from "./i18n";
 import type { CarWithPassengers } from "./types";
 
 interface Props {
@@ -22,14 +23,16 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   accessKey: string;
   adminKey: string;
+  language: WeddingLanguage;
 }
 
 const empty = { name: "", phone: "", address: "", password: "" };
 
-export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey }: Props) {
+export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey, language }: Props) {
   const qc = useQueryClient();
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const copy = weddingCopy[language].joinDialog;
 
   useEffect(() => {
     if (open) setForm(empty);
@@ -46,23 +49,23 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey }: 
     const password = form.password.trim();
 
     if (!name || !phone || !address) {
-      toast.error("יש למלא את כל השדות");
+      toast.error(copy.requiredError);
       return;
     }
     if (phone.length < 7) {
-      toast.error("מספר טלפון לא תקין");
+      toast.error(copy.phoneError);
       return;
     }
     if (password.length !== 4) {
-      toast.error("הסיסמה חייבת להיות באורך 4 תווים");
+      toast.error(copy.passwordError);
       return;
     }
     if (password !== car.password) {
-      toast.error("סיסמה שגויה. פנו לנהג לקבלת הסיסמה.");
+      toast.error(copy.wrongPassword);
       return;
     }
     if (seatsLeft <= 0) {
-      toast.error("אין יותר מקומות פנויים ברכב");
+      toast.error(copy.fullError);
       return;
     }
 
@@ -79,29 +82,29 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey }: 
     setSaving(false);
 
     if (error) {
-      toast.error("שגיאה בהוספה: " + error.message);
+      toast.error(copy.addError + error.message);
       return;
     }
     qc.invalidateQueries({ queryKey: ["cars", car.wedding_id] });
-    toast.success(`נוספת לרכב של ${car.driver_name}!`);
+    toast.success(copy.joined(car.driver_name));
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-md" dir={languageDirection(language)}>
         <DialogHeader>
-          <DialogTitle>הצטרפות לרכב של {car.driver_name}</DialogTitle>
+          <DialogTitle>{copy.title(car.driver_name)}</DialogTitle>
           <DialogDescription>
             {car.from_location} ↔ {car.to_location}
-            {car.departure_time ? ` · ${car.departure_time}` : ""} · נותרו {seatsLeft} מקומות
+            {car.departure_time ? ` · ${car.departure_time}` : ""} · {copy.seatsLeft(seatsLeft)}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <Field label="שם מלא">
+          <Field label={copy.fullName}>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           </Field>
-          <Field label="טלפון">
+          <Field label={copy.phone}>
             <Input
               type="tel"
               inputMode="tel"
@@ -111,15 +114,15 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey }: 
               required
             />
           </Field>
-          <Field label="כתובת לאיסוף">
+          <Field label={copy.pickupAddress}>
             <Input
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="רחוב, מספר, עיר"
+              placeholder={copy.pickupPlaceholder}
               required
             />
           </Field>
-          <Field label="סיסמת הצטרפות (קבלו מהנהג)">
+          <Field label={copy.password}>
             <Input
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value.slice(0, 4) })}
@@ -131,15 +134,15 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey }: 
               href={`tel:${car.driver_phone}`}
               className="text-xs text-primary hover:underline mt-1 inline-block"
             >
-              חיוג לנהג ({car.driver_phone}) לקבלת הסיסמה
+              {copy.callDriver(car.driver_phone)}
             </a>
           </Field>
           <DialogFooter className="gap-2 sm:gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              ביטול
+              {copy.cancel}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "מצטרף…" : "אישור והצטרפות"}
+              {saving ? copy.joining : copy.confirm}
             </Button>
           </DialogFooter>
         </form>

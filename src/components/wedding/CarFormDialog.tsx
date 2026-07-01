@@ -15,6 +15,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { languageDirection, weddingCopy, type WeddingLanguage } from "./i18n";
 import type { CarWithPassengers } from "./types";
 
 interface Props {
@@ -25,6 +26,7 @@ interface Props {
   weddingVenue: string;
   accessKey: string;
   adminKey: string;
+  language: WeddingLanguage;
 }
 
 const empty = {
@@ -38,12 +40,22 @@ const empty = {
   notes: "",
 };
 
-export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue, accessKey, adminKey }: Props) {
+export function CarFormDialog({
+  open,
+  onOpenChange,
+  car,
+  weddingId,
+  weddingVenue,
+  accessKey,
+  adminKey,
+  language,
+}: Props) {
   const qc = useQueryClient();
   const editing = !!car;
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const fixedVenue = weddingVenue.trim();
+  const copy = weddingCopy[language].carForm;
 
   useEffect(() => {
     if (open) {
@@ -77,19 +89,19 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
     const password = form.password.trim();
 
     if (!name || !phone || !fromL || !toL) {
-      toast.error("יש למלא את כל השדות החיוניים");
+      toast.error(copy.requiredError);
       return;
     }
     if (form.seats_total < 1 || form.seats_total > 20) {
-      toast.error("מספר המקומות חייב להיות בין 1 ל-20");
+      toast.error(copy.seatsError);
       return;
     }
     if (password.length !== 4) {
-      toast.error("הסיסמה חייבת להיות באורך 4 תווים");
+      toast.error(copy.passwordError);
       return;
     }
     if (phone.length < 7) {
-      toast.error("מספר טלפון לא תקין");
+      toast.error(copy.phoneError);
       return;
     }
 
@@ -125,30 +137,26 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
     setSaving(false);
 
     if (error) {
-      toast.error("שגיאה בשמירה: " + error.message);
+      toast.error(copy.saveError + error.message);
       return;
     }
     qc.invalidateQueries({ queryKey: ["cars", weddingId] });
-    toast.success(editing ? "הרכב עודכן" : "הרכב נוסף בהצלחה");
+    toast.success(editing ? copy.updated : copy.added);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-md" dir={languageDirection(language)}>
         <DialogHeader>
-          <DialogTitle>
-            {editing ? "עריכת רכב" : "הוספת רכב"}
-          </DialogTitle>
-          <DialogDescription>
-            הרכב יוצג כנסיעה הלוך וחזור לחתונה.
-          </DialogDescription>
+          <DialogTitle>{editing ? copy.editTitle : copy.addTitle}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
-          <Field label="שם הנהג">
+          <Field label={copy.driverName}>
             <Input value={form.driver_name} onChange={(e) => update("driver_name", e.target.value)} required />
           </Field>
-          <Field label="טלפון הנהג">
+          <Field label={copy.driverPhone}>
             <Input
               type="tel"
               inputMode="tel"
@@ -159,10 +167,10 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="נקודת יציאה">
+            <Field label={copy.fromLocation}>
               <Input value={form.from_location} onChange={(e) => update("from_location", e.target.value)} required />
             </Field>
-            <Field label="מקום החתונה">
+            <Field label={copy.weddingVenue}>
               <Input
                 value={fixedVenue || form.to_location}
                 onChange={(e) => update("to_location", e.target.value)}
@@ -172,13 +180,13 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
               />
               {fixedVenue && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  נקבע ביצירת החתונה.
+                  {copy.fixedVenue}
                 </p>
               )}
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="מספר מקומות פנויים">
+            <Field label={copy.seats}>
               <Input
                 type="number"
                 min={1}
@@ -188,7 +196,7 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
                 required
               />
             </Field>
-            <Field label="שעת יציאה">
+            <Field label={copy.departureTime}>
               <Input
                 value={form.departure_time}
                 onChange={(e) => update("departure_time", e.target.value)}
@@ -196,7 +204,7 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
               />
             </Field>
           </div>
-          <Field label="סיסמת הצטרפות (4 תווים)">
+          <Field label={copy.password}>
             <Input
               value={form.password}
               onChange={(e) => update("password", e.target.value.slice(0, 4))}
@@ -206,24 +214,24 @@ export function CarFormDialog({ open, onOpenChange, car, weddingId, weddingVenue
               className="text-center tracking-[0.5em] font-mono text-lg"
             />
             <p className="text-xs text-muted-foreground mt-1">
-              שתפו את הסיסמה רק עם מי שאתם רוצים להעלות לרכב.
+              {copy.passwordHelp}
             </p>
           </Field>
-          <Field label="הערות (לא חובה)">
+          <Field label={copy.notes}>
             <Textarea
               rows={2}
               value={form.notes}
               onChange={(e) => update("notes", e.target.value)}
-              placeholder="לדוגמה: יש מקום למזוודה אחת בלבד"
+              placeholder={copy.notesPlaceholder}
             />
           </Field>
 
           <DialogFooter className="gap-2 sm:gap-2 pt-2">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-              ביטול
+              {copy.cancel}
             </Button>
             <Button type="submit" disabled={saving}>
-              {saving ? "שומר…" : editing ? "שמירת שינויים" : "הוספת הרכב"}
+              {saving ? copy.saving : editing ? copy.saveChanges : copy.addCar}
             </Button>
           </DialogFooter>
         </form>
