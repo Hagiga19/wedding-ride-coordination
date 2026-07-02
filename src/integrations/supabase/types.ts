@@ -155,6 +155,7 @@ export type Database = {
           p_access_key: string
           p_admin_key: string | null
           p_departure_time: string | null
+          p_direction: Database["public"]["Enums"]["trip_direction"]
           p_driver_name: string
           p_driver_phone: string
           p_from_location: string
@@ -248,6 +249,7 @@ export type Database = {
           p_admin_key: string | null
           p_car_id: string
           p_departure_time: string | null
+          p_direction: Database["public"]["Enums"]["trip_direction"]
           p_driver_name: string
           p_driver_phone: string
           p_from_location: string

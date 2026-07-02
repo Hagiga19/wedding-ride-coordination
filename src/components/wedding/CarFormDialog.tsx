@@ -16,11 +16,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { languageDirection, weddingCopy, type WeddingLanguage } from "./i18n";
-import type { CarWithPassengers } from "./types";
+import type { CarWithPassengers, Direction } from "./types";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  direction: Direction;
   car: CarWithPassengers | null;
   weddingId: string;
   weddingVenue: string;
@@ -43,6 +44,7 @@ const empty = {
 export function CarFormDialog({
   open,
   onOpenChange,
+  direction,
   car,
   weddingId,
   weddingVenue,
@@ -55,6 +57,7 @@ export function CarFormDialog({
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const fixedVenue = weddingVenue.trim();
+  const effectiveDirection = direction;
   const copy = weddingCopy[language].carForm;
 
   useEffect(() => {
@@ -71,10 +74,14 @@ export function CarFormDialog({
           notes: car.notes ?? "",
         });
       } else {
-        setForm({ ...empty, to_location: fixedVenue });
+        setForm(
+          effectiveDirection === "to"
+            ? { ...empty, to_location: fixedVenue }
+            : { ...empty, from_location: fixedVenue },
+        );
       }
     }
-  }, [open, car, fixedVenue]);
+  }, [open, car, fixedVenue, effectiveDirection]);
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -84,8 +91,12 @@ export function CarFormDialog({
 
     const name = form.driver_name.trim();
     const phone = form.driver_phone.trim();
-    const fromL = form.from_location.trim();
-    const toL = fixedVenue || form.to_location.trim();
+    const fromL =
+      effectiveDirection === "from"
+        ? fixedVenue || form.from_location.trim()
+        : form.from_location.trim();
+    const toL =
+      effectiveDirection === "to" ? fixedVenue || form.to_location.trim() : form.to_location.trim();
     const password = form.password.trim();
 
     if (!name || !phone || !fromL || !toL) {
@@ -106,14 +117,15 @@ export function CarFormDialog({
     }
 
     setSaving(true);
-    const { error } = editing
-      ? await supabase.rpc("update_car_for_wedding", {
+    const error = editing
+      ? await updateCar({
           p_wedding_id: weddingId,
           p_car_id: car!.id,
           p_access_key: accessKey,
           p_admin_key: adminKey || null,
           p_driver_name: name,
           p_driver_phone: phone,
+          p_direction: effectiveDirection,
           p_from_location: fromL,
           p_to_location: toL,
           p_seats_total: form.seats_total,
@@ -121,12 +133,13 @@ export function CarFormDialog({
           p_departure_time: form.departure_time.trim() || null,
           p_notes: form.notes.trim() || null,
         })
-      : await supabase.rpc("create_car_for_wedding", {
+      : await createCar({
           p_wedding_id: weddingId,
           p_access_key: accessKey,
           p_admin_key: adminKey || null,
           p_driver_name: name,
           p_driver_phone: phone,
+          p_direction: effectiveDirection,
           p_from_location: fromL,
           p_to_location: toL,
           p_seats_total: form.seats_total,
@@ -149,12 +162,24 @@ export function CarFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md" dir={languageDirection(language)}>
         <DialogHeader>
-          <DialogTitle>{editing ? copy.editTitle : copy.addTitle}</DialogTitle>
-          <DialogDescription>{copy.description}</DialogDescription>
+          <DialogTitle>
+            {editing
+              ? copy.editTitle
+              : effectiveDirection === "to"
+                ? copy.addTitleTo
+                : copy.addTitleFrom}
+          </DialogTitle>
+          <DialogDescription>
+            {effectiveDirection === "to" ? copy.descriptionTo : copy.descriptionFrom}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <Field label={copy.driverName}>
-            <Input value={form.driver_name} onChange={(e) => update("driver_name", e.target.value)} required />
+            <Input
+              value={form.driver_name}
+              onChange={(e) => update("driver_name", e.target.value)}
+              required
+            />
           </Field>
           <Field label={copy.driverPhone}>
             <Input
@@ -167,23 +192,37 @@ export function CarFormDialog({
             />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label={copy.fromLocation}>
-              <Input value={form.from_location} onChange={(e) => update("from_location", e.target.value)} required />
-            </Field>
-            <Field label={copy.weddingVenue}>
-              <Input
-                value={fixedVenue || form.to_location}
-                onChange={(e) => update("to_location", e.target.value)}
-                readOnly={!!fixedVenue}
-                className={fixedVenue ? "bg-muted/60 text-muted-foreground" : undefined}
-                required
-              />
-              {fixedVenue && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {copy.fixedVenue}
-                </p>
-              )}
-            </Field>
+            {effectiveDirection === "to" ? (
+              <>
+                <Field label={copy.fromLocation}>
+                  <Input
+                    value={form.from_location}
+                    onChange={(e) => update("from_location", e.target.value)}
+                    required
+                  />
+                </Field>
+                <FixedVenueField
+                  value={fixedVenue || form.to_location}
+                  label={copy.weddingVenue}
+                  help={copy.fixedVenue}
+                />
+              </>
+            ) : (
+              <>
+                <FixedVenueField
+                  value={fixedVenue || form.from_location}
+                  label={copy.weddingVenue}
+                  help={copy.fixedVenue}
+                />
+                <Field label={copy.toLocation}>
+                  <Input
+                    value={form.to_location}
+                    onChange={(e) => update("to_location", e.target.value)}
+                    required
+                  />
+                </Field>
+              </>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label={copy.seats}>
@@ -213,9 +252,7 @@ export function CarFormDialog({
               required
               className="text-center tracking-[0.5em] font-mono text-lg"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              {copy.passwordHelp}
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">{copy.passwordHelp}</p>
           </Field>
           <Field label={copy.notes}>
             <Textarea
@@ -246,5 +283,62 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <Label className="text-sm">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function FixedVenueField({ label, value, help }: { label: string; value: string; help: string }) {
+  return (
+    <Field label={label}>
+      <Input value={value} readOnly className="bg-muted/60 text-muted-foreground" required />
+      <p className="text-xs text-muted-foreground mt-1">{help}</p>
+    </Field>
+  );
+}
+
+type CreateCarArgs = {
+  p_wedding_id: string;
+  p_access_key: string;
+  p_admin_key: string | null;
+  p_driver_name: string;
+  p_driver_phone: string;
+  p_direction: Direction;
+  p_from_location: string;
+  p_to_location: string;
+  p_seats_total: number;
+  p_password: string;
+  p_departure_time: string | null;
+  p_notes: string | null;
+};
+
+type UpdateCarArgs = CreateCarArgs & {
+  p_car_id: string;
+};
+
+type RpcError = { code?: string; message?: string };
+
+async function createCar(args: CreateCarArgs): Promise<RpcError | null> {
+  const { error } = await supabase.rpc("create_car_for_wedding", args);
+  if (!shouldRetryLegacyCarRpc(error)) return error;
+
+  const { p_direction: _direction, ...legacyArgs } = args;
+  const legacy = await supabase.rpc("create_car_for_wedding", legacyArgs as never);
+  return legacy.error;
+}
+
+async function updateCar(args: UpdateCarArgs): Promise<RpcError | null> {
+  const { error } = await supabase.rpc("update_car_for_wedding", args);
+  if (!shouldRetryLegacyCarRpc(error)) return error;
+
+  const { p_direction: _direction, ...legacyArgs } = args;
+  const legacy = await supabase.rpc("update_car_for_wedding", legacyArgs as never);
+  return legacy.error;
+}
+
+function shouldRetryLegacyCarRpc(error: RpcError | null): boolean {
+  if (!error) return false;
+  const message = error.message ?? "";
+  return (
+    error.code === "PGRST202" ||
+    (message.includes("p_direction") && message.includes("schema cache"))
   );
 }

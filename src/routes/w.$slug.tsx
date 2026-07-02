@@ -16,6 +16,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CarFormDialog } from "@/components/wedding/CarFormDialog";
 import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
@@ -26,7 +27,7 @@ import {
   weddingCopy,
   type WeddingLanguage,
 } from "@/components/wedding/i18n";
-import type { CarWithPassengers, Wedding } from "@/components/wedding/types";
+import type { CarWithPassengers, Direction, Wedding } from "@/components/wedding/types";
 
 type WeddingSearch = {
   access?: string;
@@ -69,7 +70,9 @@ function weddingVenueText(wedding: Wedding): string {
 
 function mapsUrl(wedding: Wedding): string | null {
   const query = [wedding.venue_name, wedding.venue_address].filter(Boolean).join(", ");
-  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : null;
+  return query
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`
+    : null;
 }
 
 function WeddingBoard() {
@@ -80,6 +83,7 @@ function WeddingBoard() {
   const [adminKey, setAdminKey] = useState("");
   const [adminLoaded, setAdminLoaded] = useState(false);
   const [language, setLanguage] = useState<WeddingLanguage>("he");
+  const [tab, setTab] = useState<Direction>("to");
   const [addOpen, setAddOpen] = useState(false);
   const [editCar, setEditCar] = useState<CarWithPassengers | null>(null);
   const [joinCar, setJoinCar] = useState<CarWithPassengers | null>(null);
@@ -102,7 +106,11 @@ function WeddingBoard() {
     window.localStorage.setItem(WEDDING_LANGUAGE_STORAGE_KEY, nextLanguage);
   };
 
-  const { data: wedding, isLoading: weddingLoading, error: weddingError } = useQuery({
+  const {
+    data: wedding,
+    isLoading: weddingLoading,
+    error: weddingError,
+  } = useQuery({
     queryKey: ["wedding", slug, accessKey, adminKey],
     enabled: adminLoaded || !!accessKey,
     queryFn: async () => {
@@ -137,28 +145,61 @@ function WeddingBoard() {
     if (!wedding?.id) return;
     const channel = supabase
       .channel(`wedding-${wedding.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "cars", filter: `wedding_id=eq.${wedding.id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "passengers", filter: `wedding_id=eq.${wedding.id}` }, () => {
-        qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
-      })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cars", filter: `wedding_id=eq.${wedding.id}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "passengers",
+          filter: `wedding_id=eq.${wedding.id}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["cars", wedding.id] });
+        },
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
   }, [qc, wedding?.id]);
 
-  const allCars = useMemo(() => cars ?? [], [cars]);
+  const venueText = wedding ? weddingVenueText(wedding) : "";
+  const groupedCars = useMemo(() => {
+    const allCars = cars ?? [];
+    const fixedVenue = venueText.trim();
+    const isFromWeddingCar = (car: CarWithPassengers) =>
+      car.direction === "from" ||
+      (!!fixedVenue &&
+        car.from_location.trim() === fixedVenue &&
+        car.to_location.trim() !== fixedVenue);
 
-  const counts = useMemo(
-    () => ({
-      cars: allCars.length,
-      passengers: allCars.reduce((n, c) => n + (c.passengers?.length ?? 0), 0),
-      seatsLeft: allCars.reduce((n, c) => n + Math.max(0, c.seats_total - (c.passengers?.length ?? 0)), 0),
-    }),
-    [allCars],
-  );
+    return {
+      to: allCars.filter((car) => !isFromWeddingCar(car)),
+      from: allCars.filter(isFromWeddingCar),
+    };
+  }, [cars, venueText]);
+
+  const counts = useMemo(() => {
+    const summarize = (list: CarWithPassengers[]) => ({
+      cars: list.length,
+      passengers: list.reduce((n, c) => n + (c.passengers?.length ?? 0), 0),
+      seatsLeft: list.reduce(
+        (n, c) => n + Math.max(0, c.seats_total - (c.passengers?.length ?? 0)),
+        0,
+      ),
+    });
+    return {
+      to: summarize(groupedCars.to),
+      from: summarize(groupedCars.from),
+    };
+  }, [groupedCars]);
 
   const handleShare = async () => {
     const shareAccessKey = accessKey || wedding?.guest_token || "";
@@ -180,11 +221,18 @@ function WeddingBoard() {
   };
 
   if ((!adminLoaded && !accessKey) || weddingLoading) {
-    return <div className="min-h-screen flex items-center justify-center text-muted-foreground">{copy.page.loading}</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+        {copy.page.loading}
+      </div>
+    );
   }
   if (weddingError || !wedding) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 text-center gap-4" dir={dir}>
+      <div
+        className="min-h-screen flex flex-col items-center justify-center px-4 text-center gap-4"
+        dir={dir}
+      >
         <h1 className="text-2xl font-bold text-primary">{copy.page.notFoundTitle}</h1>
         <Link to="/" className="underline text-primary">
           {copy.page.backHome}
@@ -193,7 +241,6 @@ function WeddingBoard() {
     );
   }
 
-  const venueText = weddingVenueText(wedding);
   const navigationUrl = mapsUrl(wedding);
 
   return (
@@ -201,7 +248,10 @@ function WeddingBoard() {
       <header className="px-4 pt-8 pb-6 text-center">
         <div className="mb-4 flex items-center justify-center gap-2">
           {adminKey && (
-            <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary"
+            >
               <ArrowRight className="h-3 w-3" />
               {copy.page.managementLink}
             </Link>
@@ -215,7 +265,9 @@ function WeddingBoard() {
               type="button"
               className={
                 "rounded-full px-3 py-1 transition " +
-                (language === "he" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")
+                (language === "he"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground")
               }
               onClick={() => updateLanguage("he")}
             >
@@ -225,7 +277,9 @@ function WeddingBoard() {
               type="button"
               className={
                 "rounded-full px-3 py-1 transition " +
-                (language === "en" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")
+                (language === "en"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground")
               }
               onClick={() => updateLanguage("en")}
             >
@@ -277,47 +331,80 @@ function WeddingBoard() {
       </header>
 
       <main className="px-4 max-w-2xl mx-auto">
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <Stat icon={<CarIcon className="h-4 w-4" />} label={copy.page.cars} value={counts.cars} />
-            <Stat icon={<Users className="h-4 w-4" />} label={copy.page.passengers} value={counts.passengers} />
-            <Stat icon={<UserPlus className="h-4 w-4" />} label={copy.page.seatsLeft} value={counts.seatsLeft} />
-          </div>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as Direction)} dir={dir}>
+          <TabsList className="grid w-full grid-cols-2 h-12 bg-secondary/60 backdrop-blur">
+            <TabsTrigger
+              value="to"
+              className="text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {copy.page.tabTo}
+            </TabsTrigger>
+            <TabsTrigger
+              value="from"
+              className="text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            >
+              {copy.page.tabFrom}
+            </TabsTrigger>
+          </TabsList>
 
-          <Button
-            onClick={() => {
-              setEditCar(null);
-              setAddOpen(true);
-            }}
-            className="w-full h-12 gap-2 text-base shadow-soft"
-          >
-            <Plus className="h-5 w-5" />
-            {copy.page.addCar}
-          </Button>
-
-          {isLoading ? (
-            <p className="text-center text-muted-foreground py-8">{copy.page.loading}</p>
-          ) : allCars.length === 0 ? (
-            <EmptyState language={language} />
-          ) : (
-            <div className="space-y-3">
-              {allCars.map((car) => (
-                <CarCard
-                  key={car.id}
-                  car={car}
-                  onJoin={() => setJoinCar(car)}
-                  onEdit={() => {
-                    setEditCar(car);
-                    setAddOpen(true);
-                  }}
-                  accessKey={accessKey}
-                  adminKey={adminKey}
-                  language={language}
+          {(["to", "from"] as const).map((direction) => (
+            <TabsContent key={direction} value={direction} className="mt-5 space-y-4">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <Stat
+                  icon={<CarIcon className="h-4 w-4" />}
+                  label={copy.page.cars}
+                  value={counts[direction].cars}
                 />
-              ))}
-            </div>
-          )}
-        </div>
+                <Stat
+                  icon={<Users className="h-4 w-4" />}
+                  label={copy.page.passengers}
+                  value={counts[direction].passengers}
+                />
+                <Stat
+                  icon={<UserPlus className="h-4 w-4" />}
+                  label={copy.page.seatsLeft}
+                  value={counts[direction].seatsLeft}
+                />
+              </div>
+
+              <Button
+                onClick={() => {
+                  setTab(direction);
+                  setEditCar(null);
+                  setAddOpen(true);
+                }}
+                className="w-full h-12 gap-2 text-base shadow-soft"
+              >
+                <Plus className="h-5 w-5" />
+                {direction === "to" ? copy.page.addCarTo : copy.page.addCarFrom}
+              </Button>
+
+              {isLoading ? (
+                <p className="text-center text-muted-foreground py-8">{copy.page.loading}</p>
+              ) : groupedCars[direction].length === 0 ? (
+                <EmptyState direction={direction} language={language} />
+              ) : (
+                <div className="space-y-3">
+                  {groupedCars[direction].map((car) => (
+                    <CarCard
+                      key={car.id}
+                      car={car}
+                      onJoin={() => setJoinCar(car)}
+                      onEdit={() => {
+                        setTab(direction);
+                        setEditCar(car);
+                        setAddOpen(true);
+                      }}
+                      accessKey={accessKey}
+                      adminKey={adminKey}
+                      language={language}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
       </main>
 
       <CarFormDialog
@@ -326,6 +413,7 @@ function WeddingBoard() {
           setAddOpen(o);
           if (!o) setEditCar(null);
         }}
+        direction={tab}
         car={editCar}
         weddingId={wedding.id}
         weddingVenue={venueText}
@@ -359,14 +447,14 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
   );
 }
 
-function EmptyState({ language }: { language: WeddingLanguage }) {
+function EmptyState({ direction, language }: { direction: Direction; language: WeddingLanguage }) {
   const copy = weddingCopy[language].page;
 
   return (
     <div className="text-center py-12 px-4 rounded-2xl bg-card/50 border border-dashed border-border">
       <CarIcon className="h-10 w-10 mx-auto text-muted-foreground/60" />
       <p className="mt-3 text-muted-foreground">
-        {copy.emptyLine1}
+        {direction === "to" ? copy.emptyToLine1 : copy.emptyFromLine1}
         <br />
         {copy.emptyLine2}
       </p>
