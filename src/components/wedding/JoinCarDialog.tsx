@@ -22,7 +22,6 @@ const empty = { name: "", phone: "", address: "", password: "" };
 
 export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey, language }: Props) {
   const qc = useQueryClient();
-  const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const copy = weddingCopy[language].joinDialog;
 
@@ -31,10 +30,11 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey, la
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const name = form.name.trim();
-    const phone = form.phone.trim();
-    const address = form.address.trim();
-    const password = form.password.trim();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
+    const name = readFormValue(formData, "name");
+    const phone = readFormValue(formData, "phone");
+    const address = readFormValue(formData, "address");
+    const password = readFormValue(formData, "password");
 
     if (!name || !phone || !address) {
       toast.error(copy.requiredError);
@@ -94,30 +94,30 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey, la
     >
         <form onSubmit={handleSubmit} className="space-y-3">
           <Field label={copy.fullName}>
-            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <Input name="name" defaultValue={empty.name} required />
           </Field>
           <Field label={copy.phone}>
             <Input
               type="tel"
               inputMode="tel"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              name="phone"
+              defaultValue={empty.phone}
               placeholder="050-1234567"
               required
             />
           </Field>
           <Field label={copy.pickupAddress}>
             <Input
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              name="address"
+              defaultValue={empty.address}
               placeholder={copy.pickupPlaceholder}
               required
             />
           </Field>
           <Field label={copy.password}>
             <Input
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value.slice(0, 4) })}
+              name="password"
+              defaultValue={empty.password}
               maxLength={4}
               required
               className="text-center tracking-[0.5em] font-mono text-lg"
@@ -149,4 +149,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function readFormValue(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
 }

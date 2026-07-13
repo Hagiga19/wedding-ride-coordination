@@ -50,29 +50,26 @@ export function CarFormDialog({
   const fixedVenue = weddingVenue.trim();
   const effectiveDirection = direction;
   const copy = weddingCopy[language].carForm;
-  const [form, setForm] = useState(() => initialCarForm(car, fixedVenue, effectiveDirection));
-
-  const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
-    setForm((p) => ({ ...p, [k]: v }));
+  const initial = initialCarForm(car, fixedVenue, effectiveDirection);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget as HTMLFormElement);
 
-    const name = form.driver_name.trim();
-    const phone = form.driver_phone.trim();
-    const fromL =
-      effectiveDirection === "from"
-        ? fixedVenue || form.from_location.trim()
-        : form.from_location.trim();
-    const toL =
-      effectiveDirection === "to" ? fixedVenue || form.to_location.trim() : form.to_location.trim();
-    const password = form.password.trim();
+    const name = readFormValue(formData, "driver_name");
+    const phone = readFormValue(formData, "driver_phone");
+    const fromL = readFormValue(formData, "from_location");
+    const toL = readFormValue(formData, "to_location");
+    const seatsTotal = Number(readFormValue(formData, "seats_total"));
+    const departureTime = readFormValue(formData, "departure_time");
+    const notes = readFormValue(formData, "notes");
+    const password = readFormValue(formData, "password");
 
     if (!name || !phone || !fromL || !toL) {
       toast.error(copy.requiredError);
       return;
     }
-    if (form.seats_total < 1 || form.seats_total > 20) {
+    if (!Number.isFinite(seatsTotal) || seatsTotal < 1 || seatsTotal > 20) {
       toast.error(copy.seatsError);
       return;
     }
@@ -97,10 +94,10 @@ export function CarFormDialog({
           p_direction: effectiveDirection,
           p_from_location: fromL,
           p_to_location: toL,
-          p_seats_total: form.seats_total,
+          p_seats_total: seatsTotal,
           p_password: password,
-          p_departure_time: form.departure_time.trim() || null,
-          p_notes: form.notes.trim() || null,
+          p_departure_time: departureTime || null,
+          p_notes: notes || null,
         })
       : await createCar({
           p_wedding_id: weddingId,
@@ -111,10 +108,10 @@ export function CarFormDialog({
           p_direction: effectiveDirection,
           p_from_location: fromL,
           p_to_location: toL,
-          p_seats_total: form.seats_total,
+          p_seats_total: seatsTotal,
           p_password: password,
-          p_departure_time: form.departure_time.trim() || null,
-          p_notes: form.notes.trim() || null,
+          p_departure_time: departureTime || null,
+          p_notes: notes || null,
         });
     setSaving(false);
 
@@ -148,8 +145,8 @@ export function CarFormDialog({
         <form onSubmit={handleSubmit} className="space-y-3">
           <Field label={copy.driverName}>
             <Input
-              value={form.driver_name}
-              onChange={(e) => update("driver_name", e.target.value)}
+              name="driver_name"
+              defaultValue={initial.driver_name}
               required
             />
           </Field>
@@ -157,8 +154,8 @@ export function CarFormDialog({
             <Input
               type="tel"
               inputMode="tel"
-              value={form.driver_phone}
-              onChange={(e) => update("driver_phone", e.target.value)}
+              name="driver_phone"
+              defaultValue={initial.driver_phone}
               placeholder="050-1234567"
               required
             />
@@ -168,13 +165,14 @@ export function CarFormDialog({
               <>
                 <Field label={copy.fromLocation}>
                   <Input
-                    value={form.from_location}
-                    onChange={(e) => update("from_location", e.target.value)}
+                    name="from_location"
+                    defaultValue={initial.from_location}
                     required
                   />
                 </Field>
                 <FixedVenueField
-                  value={fixedVenue || form.to_location}
+                  name="to_location"
+                  value={fixedVenue || initial.to_location}
                   label={copy.weddingVenue}
                   help={copy.fixedVenue}
                 />
@@ -182,14 +180,15 @@ export function CarFormDialog({
             ) : (
               <>
                 <FixedVenueField
-                  value={fixedVenue || form.from_location}
+                  name="from_location"
+                  value={fixedVenue || initial.from_location}
                   label={copy.weddingVenue}
                   help={copy.fixedVenue}
                 />
                 <Field label={copy.toLocation}>
                   <Input
-                    value={form.to_location}
-                    onChange={(e) => update("to_location", e.target.value)}
+                    name="to_location"
+                    defaultValue={initial.to_location}
                     required
                   />
                 </Field>
@@ -202,23 +201,23 @@ export function CarFormDialog({
                 type="number"
                 min={1}
                 max={20}
-                value={form.seats_total}
-                onChange={(e) => update("seats_total", Number(e.target.value))}
+                name="seats_total"
+                defaultValue={initial.seats_total}
                 required
               />
             </Field>
             <Field label={copy.departureTime}>
               <Input
-                value={form.departure_time}
-                onChange={(e) => update("departure_time", e.target.value)}
+                name="departure_time"
+                defaultValue={initial.departure_time}
                 placeholder="20:00"
               />
             </Field>
           </div>
           <Field label={copy.password}>
             <Input
-              value={form.password}
-              onChange={(e) => update("password", e.target.value.slice(0, 4))}
+              name="password"
+              defaultValue={initial.password}
               maxLength={4}
               placeholder="1234"
               required
@@ -228,9 +227,9 @@ export function CarFormDialog({
           </Field>
           <Field label={copy.notes}>
             <Textarea
+              name="notes"
               rows={2}
-              value={form.notes}
-              onChange={(e) => update("notes", e.target.value)}
+              defaultValue={initial.notes}
               placeholder={copy.notesPlaceholder}
             />
           </Field>
@@ -257,13 +256,34 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function FixedVenueField({ label, value, help }: { label: string; value: string; help: string }) {
+function FixedVenueField({
+  label,
+  value,
+  help,
+  name,
+}: {
+  label: string;
+  value: string;
+  help: string;
+  name: string;
+}) {
   return (
     <Field label={label}>
-      <Input value={value} readOnly className="bg-muted/60 text-muted-foreground" required />
+      <Input
+        name={name}
+        defaultValue={value}
+        readOnly
+        className="bg-muted/60 text-muted-foreground"
+        required
+      />
       <p className="text-xs text-muted-foreground mt-1">{help}</p>
     </Field>
   );
+}
+
+function readFormValue(formData: FormData, name: string): string {
+  const value = formData.get(name);
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function initialCarForm(

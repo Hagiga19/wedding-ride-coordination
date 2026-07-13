@@ -221,25 +221,11 @@ function WeddingBoard() {
   const openCarForm = (nextDirection: Direction, car: CarWithPassengers | null = null) => {
     if (tab !== nextDirection) setTab(nextDirection);
     if (editCar?.id !== car?.id) setEditCar(car);
-    window.setTimeout(() => {
-      setAddOpen(true);
-      scrollOpenPanel();
-    }, 25);
+    window.setTimeout(() => setAddOpen(true), 25);
   };
 
   const openJoinForm = (car: CarWithPassengers) => {
-    window.setTimeout(() => {
-      setJoinCar(car);
-      scrollOpenPanel();
-    }, 25);
-  };
-
-  const scrollOpenPanel = () => {
-    window.setTimeout(() => {
-      document
-        .querySelector('[data-wedding-modal="content"]')
-        ?.scrollIntoView({ block: "center", behavior: "smooth" });
-    }, 50);
+    window.setTimeout(() => setJoinCar(car), 25);
   };
 
   if ((!adminLoaded && !accessKey) || weddingLoading) {
