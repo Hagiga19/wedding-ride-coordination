@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build --config vite.static.config.ts",
-    "build:dev": "vite build --config vite.static.config.ts --mode development",
+    "build": "vite build --config vite.static.config.ts && node scripts/prepare-sites-build.mjs",
+    "build:dev": "vite build --config vite.static.config.ts --mode development && node scripts/prepare-sites-build.mjs",
     "build:ssr": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
