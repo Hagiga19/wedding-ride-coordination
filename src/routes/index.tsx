@@ -44,7 +44,7 @@ function makeFallbackSlug(): string {
 }
 
 function weddingUrl(wedding: Pick<Wedding, "slug" | "guest_token">): string {
-  return `/w/${encodeURIComponent(wedding.slug)}?access=${encodeURIComponent(wedding.guest_token)}`;
+  return `/#/w/${encodeURIComponent(wedding.slug)}?access=${encodeURIComponent(wedding.guest_token)}`;
 }
 
 const ADMIN_STORAGE_KEY = "wedding-ride-admin-key";
@@ -301,7 +301,7 @@ function Landing() {
                 <div className="space-y-1.5">
                   <Label>כתובת הקישור</Label>
                   <div className="flex items-center gap-1 text-sm" dir="ltr">
-                    <span className="text-muted-foreground">/w/</span>
+                    <span className="text-muted-foreground">#/w/</span>
                     <Input
                       value={slug}
                       onChange={(e) => { setSlugTouched(true); setSlug(slugify(e.target.value)); }}
@@ -354,7 +354,7 @@ function Landing() {
                               <span className="truncate">{w.venue_name || w.venue_address}</span>
                             </div>
                           )}
-                          <div className="text-xs text-muted-foreground font-mono" dir="ltr">/w/{w.slug}</div>
+                          <div className="text-xs text-muted-foreground font-mono" dir="ltr">#/w/{w.slug}</div>
                         </div>
                         <ArrowLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary transition" />
                       </a>
@@ -403,7 +403,7 @@ function Landing() {
               <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
                 <div className="font-medium text-foreground">{deleteWedding.name}</div>
                 <div className="font-mono text-xs text-muted-foreground" dir="ltr">
-                  /w/{deleteWedding.slug}
+                  #/w/{deleteWedding.slug}
                 </div>
               </div>
               <p className="text-sm text-muted-foreground">

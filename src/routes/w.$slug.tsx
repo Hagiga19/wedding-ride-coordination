@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -119,11 +119,9 @@ function WeddingBoard() {
           p_slug: slug,
           p_access_key: accessKey,
           p_admin_key: adminKey || null,
-        })
-        .maybeSingle();
+        });
       if (error) throw error;
-      if (!data) throw notFound();
-      return data as Wedding;
+      return ((data ?? []) as Wedding[])[0] ?? null;
     },
   });
 
@@ -204,9 +202,9 @@ function WeddingBoard() {
   const handleShare = async () => {
     const shareAccessKey = accessKey || wedding?.guest_token || "";
     const url = new URL(window.location.href);
-    url.pathname = `/w/${encodeURIComponent(wedding.slug)}`;
+    url.pathname = "/";
     url.search = "";
-    url.searchParams.set("access", shareAccessKey);
+    url.hash = `/w/${encodeURIComponent(wedding.slug)}?access=${encodeURIComponent(shareAccessKey)}`;
 
     try {
       if (navigator.share) {
