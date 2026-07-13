@@ -29,16 +29,22 @@ await writeFile(
   resolve(serverDir, "index.js"),
   `export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (url.pathname === "/" || !url.pathname.split("/").pop().includes(".")) {
+      url.pathname = "/index.html";
+      url.search = "";
+      return env.ASSETS.fetch(new Request(url, request));
+    }
+
     const response = await env.ASSETS.fetch(request);
 
     if (response.status !== 404) {
       return response;
     }
 
-    const url = new URL(request.url);
     url.pathname = "/index.html";
     url.search = "";
-
     return env.ASSETS.fetch(new Request(url, request));
   },
 };
