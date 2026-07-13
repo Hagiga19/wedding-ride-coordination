@@ -1,20 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { languageDirection, weddingCopy, type WeddingLanguage } from "./i18n";
+import { ModalShell } from "./ModalShell";
 import type { CarWithPassengers } from "./types";
 
 interface Props {
@@ -34,11 +26,7 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey, la
   const [saving, setSaving] = useState(false);
   const copy = weddingCopy[language].joinDialog;
 
-  useEffect(() => {
-    if (open) setForm(empty);
-  }, [open]);
-
-  if (!car) return null;
+  if (!open || !car) return null;
   const seatsLeft = car.seats_total - (car.passengers?.length ?? 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,15 +79,19 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey, la
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir={languageDirection(language)}>
-        <DialogHeader>
-          <DialogTitle>{copy.title(car.driver_name)}</DialogTitle>
-          <DialogDescription>
-            {car.from_location} ↔ {car.to_location}
-            {car.departure_time ? ` · ${car.departure_time}` : ""} · {copy.seatsLeft(seatsLeft)}
-          </DialogDescription>
-        </DialogHeader>
+    <ModalShell
+      open
+      onOpenChange={onOpenChange}
+      dir={languageDirection(language)}
+      closeLabel={copy.cancel}
+      title={copy.title(car.driver_name)}
+      description={
+        <>
+          {car.from_location} ↔ {car.to_location}
+          {car.departure_time ? ` · ${car.departure_time}` : ""} · {copy.seatsLeft(seatsLeft)}
+        </>
+      }
+    >
         <form onSubmit={handleSubmit} className="space-y-3">
           <Field label={copy.fullName}>
             <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
@@ -137,24 +129,23 @@ export function JoinCarDialog({ car, open, onOpenChange, accessKey, adminKey, la
               {copy.callDriver(car.driver_phone)}
             </a>
           </Field>
-          <DialogFooter className="gap-2 sm:gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {copy.cancel}
             </Button>
             <Button type="submit" disabled={saving}>
               {saving ? copy.joining : copy.confirm}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </ModalShell>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm">{label}</Label>
+      <label className="text-sm font-medium leading-none">{label}</label>
       {children}
     </div>
   );

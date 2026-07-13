@@ -218,6 +218,30 @@ function WeddingBoard() {
     }
   };
 
+  const openCarForm = (nextDirection: Direction, car: CarWithPassengers | null = null) => {
+    if (tab !== nextDirection) setTab(nextDirection);
+    if (editCar?.id !== car?.id) setEditCar(car);
+    window.setTimeout(() => {
+      setAddOpen(true);
+      scrollOpenPanel();
+    }, 25);
+  };
+
+  const openJoinForm = (car: CarWithPassengers) => {
+    window.setTimeout(() => {
+      setJoinCar(car);
+      scrollOpenPanel();
+    }, 25);
+  };
+
+  const scrollOpenPanel = () => {
+    window.setTimeout(() => {
+      document
+        .querySelector('[data-wedding-modal="content"]')
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 50);
+  };
+
   if ((!adminLoaded && !accessKey) || weddingLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
@@ -367,9 +391,7 @@ function WeddingBoard() {
 
               <Button
                 onClick={() => {
-                  setTab(direction);
-                  setEditCar(null);
-                  setAddOpen(true);
+                  openCarForm(direction);
                 }}
                 className="w-full h-12 gap-2 text-base shadow-soft"
               >
@@ -387,11 +409,9 @@ function WeddingBoard() {
                     <CarCard
                       key={car.id}
                       car={car}
-                      onJoin={() => setJoinCar(car)}
+                      onJoin={() => openJoinForm(car)}
                       onEdit={() => {
-                        setTab(direction);
-                        setEditCar(car);
-                        setAddOpen(true);
+                        openCarForm(direction, car);
                       }}
                       accessKey={accessKey}
                       adminKey={adminKey}
@@ -406,6 +426,7 @@ function WeddingBoard() {
       </main>
 
       <CarFormDialog
+        key={addOpen ? `${editCar?.id ?? "new"}-${tab}-${venueText}` : "closed-car-form"}
         open={addOpen}
         onOpenChange={(o) => {
           setAddOpen(o);
@@ -420,6 +441,7 @@ function WeddingBoard() {
         language={language}
       />
       <JoinCarDialog
+        key={joinCar?.id ?? "closed-join-form"}
         car={joinCar}
         open={!!joinCar}
         onOpenChange={(o) => {

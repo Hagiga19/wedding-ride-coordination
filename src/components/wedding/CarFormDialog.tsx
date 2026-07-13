@@ -1,21 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { languageDirection, weddingCopy, type WeddingLanguage } from "./i18n";
+import { ModalShell } from "./ModalShell";
 import type { CarWithPassengers, Direction } from "./types";
 
 interface Props {
@@ -54,34 +46,11 @@ export function CarFormDialog({
 }: Props) {
   const qc = useQueryClient();
   const editing = !!car;
-  const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
   const fixedVenue = weddingVenue.trim();
   const effectiveDirection = direction;
   const copy = weddingCopy[language].carForm;
-
-  useEffect(() => {
-    if (open) {
-      if (car) {
-        setForm({
-          driver_name: car.driver_name,
-          driver_phone: car.driver_phone,
-          from_location: car.from_location,
-          to_location: fixedVenue || car.to_location,
-          seats_total: car.seats_total,
-          password: car.password,
-          departure_time: car.departure_time ?? "",
-          notes: car.notes ?? "",
-        });
-      } else {
-        setForm(
-          effectiveDirection === "to"
-            ? { ...empty, to_location: fixedVenue }
-            : { ...empty, from_location: fixedVenue },
-        );
-      }
-    }
-  }, [open, car, fixedVenue, effectiveDirection]);
+  const [form, setForm] = useState(() => initialCarForm(car, fixedVenue, effectiveDirection));
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -158,21 +127,24 @@ export function CarFormDialog({
     onOpenChange(false);
   };
 
+  const modalTitle = editing
+    ? copy.editTitle
+    : effectiveDirection === "to"
+      ? copy.addTitleTo
+      : copy.addTitleFrom;
+  const modalDescription = effectiveDirection === "to" ? copy.descriptionTo : copy.descriptionFrom;
+
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" dir={languageDirection(language)}>
-        <DialogHeader>
-          <DialogTitle>
-            {editing
-              ? copy.editTitle
-              : effectiveDirection === "to"
-                ? copy.addTitleTo
-                : copy.addTitleFrom}
-          </DialogTitle>
-          <DialogDescription>
-            {effectiveDirection === "to" ? copy.descriptionTo : copy.descriptionFrom}
-          </DialogDescription>
-        </DialogHeader>
+    <ModalShell
+      open
+      onOpenChange={onOpenChange}
+      dir={languageDirection(language)}
+      closeLabel={copy.cancel}
+      title={modalTitle}
+      description={modalDescription}
+    >
         <form onSubmit={handleSubmit} className="space-y-3">
           <Field label={copy.driverName}>
             <Input
@@ -263,24 +235,23 @@ export function CarFormDialog({
             />
           </Field>
 
-          <DialogFooter className="gap-2 sm:gap-2 pt-2">
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               {copy.cancel}
             </Button>
             <Button type="submit" disabled={saving}>
               {saving ? copy.saving : editing ? copy.saveChanges : copy.addCar}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+    </ModalShell>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-sm">{label}</Label>
+      <label className="text-sm font-medium leading-none">{label}</label>
       {children}
     </div>
   );
@@ -293,6 +264,29 @@ function FixedVenueField({ label, value, help }: { label: string; value: string;
       <p className="text-xs text-muted-foreground mt-1">{help}</p>
     </Field>
   );
+}
+
+function initialCarForm(
+  car: CarWithPassengers | null,
+  fixedVenue: string,
+  direction: Direction,
+): typeof empty {
+  if (car) {
+    return {
+      driver_name: car.driver_name,
+      driver_phone: car.driver_phone,
+      from_location: car.from_location,
+      to_location: fixedVenue || car.to_location,
+      seats_total: car.seats_total,
+      password: car.password,
+      departure_time: car.departure_time ?? "",
+      notes: car.notes ?? "",
+    };
+  }
+
+  return direction === "to"
+    ? { ...empty, to_location: fixedVenue }
+    : { ...empty, from_location: fixedVenue };
 }
 
 type CreateCarArgs = {
