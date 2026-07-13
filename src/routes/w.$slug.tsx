@@ -221,11 +221,11 @@ function WeddingBoard() {
   const openCarForm = (nextDirection: Direction, car: CarWithPassengers | null = null) => {
     if (tab !== nextDirection) setTab(nextDirection);
     if (editCar?.id !== car?.id) setEditCar(car);
-    window.setTimeout(() => setAddOpen(true), 25);
+    setAddOpen(true);
   };
 
   const openJoinForm = (car: CarWithPassengers) => {
-    window.setTimeout(() => setJoinCar(car), 25);
+    setJoinCar(car);
   };
 
   if ((!adminLoaded && !accessKey) || weddingLoading) {
