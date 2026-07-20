@@ -4,12 +4,16 @@ export interface Wedding {
   id: string;
   slug: string;
   name: string;
+  guest_token: string;
+  venue_name: string;
+  venue_address: string;
   created_at: string;
 }
 
 export interface Passenger {
   id: string;
   car_id: string;
+  wedding_id: string;
   name: string;
   phone: string;
   address: string;
@@ -18,6 +22,7 @@ export interface Passenger {
 
 export interface Car {
   id: string;
+  wedding_id: string;
   driver_name: string;
   driver_phone: string;
   direction: Direction;
