@@ -1,12 +1,18 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight, Calendar, Clock, MapPin, Navigation } from "lucide-react";
+import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight, Calendar, Clock, MapPin, Navigation, MessageCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CarFormDialog } from "@/components/wedding/CarFormDialog";
 import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
