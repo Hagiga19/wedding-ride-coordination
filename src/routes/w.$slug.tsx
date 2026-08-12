@@ -229,7 +229,7 @@ function WeddingBoard() {
                 שיתוף הקישור
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent dir="rtl" align="center">
+            <DropdownMenuContent align="center">
               <DropdownMenuItem onClick={handleCopy} className="gap-2">
                 <Copy className="h-4 w-4" />
                 העתקת קישור
