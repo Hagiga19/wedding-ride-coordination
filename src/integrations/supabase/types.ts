@@ -111,18 +111,27 @@ export type Database = {
           id: string
           name: string
           slug: string
+          wedding_date: string | null
+          wedding_location: string | null
+          wedding_time: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           slug: string
+          wedding_date?: string | null
+          wedding_location?: string | null
+          wedding_time?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           slug?: string
+          wedding_date?: string | null
+          wedding_location?: string | null
+          wedding_time?: string | null
         }
         Relationships: []
       }
