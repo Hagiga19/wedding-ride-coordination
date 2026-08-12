@@ -1,22 +1,8 @@
-import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { Heart, Plus, ArrowLeft, Sparkles, Calendar, Clock, MapPin, Check, Trash2, LogOut } from "lucide-react";
+import { Heart, Plus, ArrowLeft, Sparkles, Calendar, Clock, MapPin, Check } from "lucide-react";
 import { toast } from "sonner";
-
-import { getManagerStatus, lockManager, deleteWedding } from "@/lib/manager.functions";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,11 +11,6 @@ import { Label } from "@/components/ui/label";
 import type { Wedding } from "@/components/wedding/types";
 
 export const Route = createFileRoute("/")({
-  ssr: false,
-  beforeLoad: async () => {
-    const { unlocked } = await getManagerStatus();
-    if (!unlocked) throw redirect({ to: "/manager" });
-  },
   head: () => ({
     meta: [
       { title: "טרמפים לחתונה — צרו או בחרו חתונה" },
@@ -61,27 +42,6 @@ function Landing() {
   const [time, setTime] = useState("");
   const [location, setLocation] = useState("");
   const [creating, setCreating] = useState(false);
-  const lock = useServerFn(lockManager);
-  const removeWedding = useServerFn(deleteWedding);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleLock = async () => {
-    await lock();
-    navigate({ to: "/manager" });
-  };
-
-  const handleDelete = async (id: string) => {
-    setDeletingId(id);
-    try {
-      await removeWedding({ data: { id } });
-      await qc.invalidateQueries({ queryKey: ["weddings"] });
-      toast.success("החתונה נמחקה");
-    } catch {
-      toast.error("שגיאה במחיקת החתונה");
-    } finally {
-      setDeletingId(null);
-    }
-  };
 
   const { data: weddings } = useQuery({
     queryKey: ["weddings"],
@@ -162,12 +122,6 @@ function Landing() {
         <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight">
           טרמפים לחתונה
         </h1>
-        <div className="mt-4 flex justify-center">
-          <Button variant="ghost" size="sm" onClick={handleLock} className="gap-1.5 text-muted-foreground">
-            <LogOut className="h-4 w-4" />
-            יציאה מאזור המנהל
-          </Button>
-        </div>
         <p className="mt-3 text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
           צרו דף חדש לחתונה שלכם, או היכנסו לחתונה קיימת.
           <br />כל חתונה היא לגמרי נפרדת — עם קישור משלה לשיתוף.
@@ -310,11 +264,11 @@ function Landing() {
             </h2>
             <ul className="space-y-2">
               {weddings.map((w) => (
-                <li key={w.id} className="flex items-stretch gap-2">
+                <li key={w.id}>
                   <Link
                     to="/w/$slug"
                     params={{ slug: w.slug }}
-                    className="flex-1 flex items-center justify-between rounded-xl bg-card/70 border border-border hover:border-primary hover:bg-card transition p-4 group"
+                    className="flex items-center justify-between rounded-xl bg-card/70 border border-border hover:border-primary hover:bg-card transition p-4 group"
                   >
                     <div className="text-right">
                       <div className="font-semibold text-primary">{w.name}</div>
@@ -322,33 +276,6 @@ function Landing() {
                     </div>
                     <ArrowLeft className="h-5 w-5 text-muted-foreground group-hover:text-primary transition" />
                   </Link>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`מחיקת ${w.name}`}
-                        disabled={deletingId === w.id}
-                        className="self-center text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>למחוק את "{w.name}"?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          כל הרכבים והנוסעים בחתונה הזו יימחקו לצמיתות. אי אפשר לשחזר.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>ביטול</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(w.id)}>
-                          מחיקה
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </li>
               ))}
             </ul>
