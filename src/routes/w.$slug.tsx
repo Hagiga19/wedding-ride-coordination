@@ -1,12 +1,18 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight, Calendar, Clock, MapPin, Navigation } from "lucide-react";
+import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight, Calendar, Clock, MapPin, Navigation, MessageCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { CarFormDialog } from "@/components/wedding/CarFormDialog";
 import { JoinCarDialog } from "@/components/wedding/JoinCarDialog";
 import { CarCard } from "@/components/wedding/CarCard";
@@ -114,14 +120,31 @@ function WeddingBoard() {
     return { to: sum(grouped.to), from: sum(grouped.from) };
   }, [grouped]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  const shareText = wedding
+    ? `טרמפים ל${wedding.name}!\n${shareUrl}\n\nהצטרפו לרכב או הוסיפו רכב לחתונה.`
+    : shareUrl;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      toast.success("הקישור הועתק!");
+    } catch {
+      toast.error("לא הצלחנו להעתיק את הקישור");
+    }
+  };
+
+  const handleWhatsApp = () => {
+    const clean = shareText.replace(/\n/g, "%0A");
+    window.open(`https://wa.me/?text=${clean}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleNativeShare = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: "טרמפים לחתונה", url });
+        await navigator.share({ title: "טרמפים לחתונה", text: shareText });
       } else {
-        await navigator.clipboard.writeText(url);
-        toast.success("הקישור הועתק!");
+        await handleCopy();
       }
     } catch {
       /* user cancelled */
@@ -199,10 +222,28 @@ function WeddingBoard() {
           כדי להצטרף, תזדקקו לסיסמה בת 4 תווים מהנהג.
         </p>
         <div className="mt-5 flex items-center justify-center gap-2">
-          <Button onClick={handleShare} variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            שיתוף הקישור
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Share2 className="h-4 w-4" />
+                שיתוף הקישור
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center">
+              <DropdownMenuItem onClick={handleCopy} className="gap-2">
+                <Copy className="h-4 w-4" />
+                העתקת קישור
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleWhatsApp} className="gap-2">
+                <MessageCircle className="h-4 w-4 text-green-600" />
+                שליחה בווטסאפ
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleNativeShare} className="gap-2">
+                <Share2 className="h-4 w-4" />
+                שיתוף באפליקציה
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
