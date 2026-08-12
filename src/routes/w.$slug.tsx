@@ -120,14 +120,31 @@ function WeddingBoard() {
     return { to: sum(grouped.to), from: sum(grouped.from) };
   }, [grouped]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
+  const shareUrl = typeof window !== "undefined" ? window.location.href : "";
+  const shareText = wedding
+    ? `טרמפים ל${wedding.name}!\n${shareUrl}\n\nהצטרפו לרכב או הוסיפו רכב לחתונה.`
+    : shareUrl;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      toast.success("הקישור הועתק!");
+    } catch {
+      toast.error("לא הצלחנו להעתיק את הקישור");
+    }
+  };
+
+  const handleWhatsApp = () => {
+    const clean = shareText.replace(/\n/g, "%0A");
+    window.open(`https://wa.me/?text=${clean}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleNativeShare = async () => {
     try {
       if (navigator.share) {
-        await navigator.share({ title: "טרמפים לחתונה", url });
+        await navigator.share({ title: "טרמפים לחתונה", text: shareText });
       } else {
-        await navigator.clipboard.writeText(url);
-        toast.success("הקישור הועתק!");
+        await handleCopy();
       }
     } catch {
       /* user cancelled */
