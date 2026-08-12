@@ -222,10 +222,28 @@ function WeddingBoard() {
           כדי להצטרף, תזדקקו לסיסמה בת 4 תווים מהנהג.
         </p>
         <div className="mt-5 flex items-center justify-center gap-2">
-          <Button onClick={handleShare} variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />
-            שיתוף הקישור
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Share2 className="h-4 w-4" />
+                שיתוף הקישור
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent dir="rtl" align="center">
+              <DropdownMenuItem onClick={handleCopy} className="gap-2">
+                <Copy className="h-4 w-4" />
+                העתקת קישור
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleWhatsApp} className="gap-2">
+                <MessageCircle className="h-4 w-4 text-green-600" />
+                שליחה בווטסאפ
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleNativeShare} className="gap-2">
+                <Share2 className="h-4 w-4" />
+                שיתוף באפליקציה
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
