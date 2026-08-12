@@ -238,5 +238,3 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId, w
     </Dialog>
   );
 }
-
-}
