@@ -36,6 +36,15 @@ const empty = {
   notes: "",
 };
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm">{label}</Label>
+      {children}
+    </div>
+  );
+}
+
 export function CarFormDialog({ open, onOpenChange, direction, car, weddingId, weddingLocation }: Props) {
   const editing = !!car;
   const [form, setForm] = useState(empty);
@@ -147,7 +156,6 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId, w
             />
           </Field>
 
-          {/* Static wedding location display */}
           <div className="space-y-1.5">
             <Label className="text-sm flex items-center gap-1.5">
               <MapPin className="h-4 w-4" />
@@ -167,7 +175,6 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId, w
             </div>
           </div>
 
-          {/* Pickup / drop-off location (the variable one) */}
           <Field label={direction === "to" ? "נקודת איסוף (מאיפה יוצאים)" : "יעד (לאן חוזרים)"}>
             <Input
               value={form.pickup_location}
@@ -232,12 +239,4 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId, w
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-            }
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-sm">{label}</Label>
-      {children}
-    </div>
-  );
 }
