@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { MapPin, Navigation } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,23 +23,25 @@ interface Props {
   direction: Direction;
   car: CarWithPassengers | null;
   weddingId: string;
+  weddingLocation: string | null;
 }
 
 const empty = {
   driver_name: "",
   driver_phone: "",
-  from_location: "",
-  to_location: "",
+  pickup_location: "",
   seats_total: 3,
   password: "",
   departure_time: "",
   notes: "",
 };
 
-export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }: Props) {
+export function CarFormDialog({ open, onOpenChange, direction, car, weddingId, weddingLocation }: Props) {
   const editing = !!car;
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+
+  const weddingLoc = weddingLocation ?? "מיקום החתונה";
 
   useEffect(() => {
     if (open) {
@@ -46,8 +49,7 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
         setForm({
           driver_name: car.driver_name,
           driver_phone: car.driver_phone,
-          from_location: car.from_location,
-          to_location: car.to_location,
+          pickup_location: direction === "to" ? car.from_location : car.to_location,
           seats_total: car.seats_total,
           password: car.password,
           departure_time: car.departure_time ?? "",
@@ -57,7 +59,7 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
         setForm(empty);
       }
     }
-  }, [open, car]);
+  }, [open, car, direction]);
 
   const update = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((p) => ({ ...p, [k]: v }));
@@ -67,11 +69,10 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
 
     const name = form.driver_name.trim();
     const phone = form.driver_phone.trim();
-    const fromL = form.from_location.trim();
-    const toL = form.to_location.trim();
+    const pickup = form.pickup_location.trim();
     const password = form.password.trim();
 
-    if (!name || !phone || !fromL || !toL) {
+    if (!name || !phone || !pickup) {
       toast.error("יש למלא את כל השדות החיוניים");
       return;
     }
@@ -88,14 +89,17 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
       return;
     }
 
+    const from_location = direction === "to" ? pickup : weddingLoc;
+    const to_location = direction === "to" ? weddingLoc : pickup;
+
     setSaving(true);
     const payload = {
       wedding_id: weddingId,
       driver_name: name,
       driver_phone: phone,
       direction,
-      from_location: fromL,
-      to_location: toL,
+      from_location,
+      to_location,
       seats_total: form.seats_total,
       password,
       departure_time: form.departure_time.trim() || null,
@@ -114,6 +118,8 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
     toast.success(editing ? "הרכב עודכן" : "הרכב נוסף בהצלחה");
     onOpenChange(false);
   };
+
+  const mapsHref = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(weddingLoc)}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -140,14 +146,37 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
               required
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label={direction === "to" ? "יוצאים מ-" : "יוצאים מ-"}>
-              <Input value={form.from_location} onChange={(e) => update("from_location", e.target.value)} required />
-            </Field>
-            <Field label={direction === "to" ? "מגיעים ל-" : "מגיעים ל-"}>
-              <Input value={form.to_location} onChange={(e) => update("to_location", e.target.value)} required />
-            </Field>
+
+          {/* Static wedding location display */}
+          <div className="space-y-1.5">
+            <Label className="text-sm flex items-center gap-1.5">
+              <MapPin className="h-4 w-4" />
+              {direction === "to" ? "יעד (מיקום החתונה)" : "נקודת יציאה (מיקום החתונה)"}
+            </Label>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+              <span className="text-sm text-muted-foreground flex-1 truncate">{weddingLoc}</span>
+              <a
+                href={mapsHref}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:text-primary/80 transition shrink-0"
+                title="פתח בניווט"
+              >
+                <Navigation className="h-4 w-4" />
+              </a>
+            </div>
           </div>
+
+          {/* Pickup / drop-off location (the variable one) */}
+          <Field label={direction === "to" ? "נקודת איסוף (מאיפה יוצאים)" : "יעד (לאן חוזרים)"}>
+            <Input
+              value={form.pickup_location}
+              onChange={(e) => update("pickup_location", e.target.value)}
+              placeholder={direction === "to" ? "כתובת האיסוף" : "כתובת היעד"}
+              required
+            />
+          </Field>
+
           <div className="grid grid-cols-2 gap-3">
             <Field label="מספר מקומות פנויים">
               <Input
@@ -204,6 +233,7 @@ export function CarFormDialog({ open, onOpenChange, direction, car, weddingId }:
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
+            }
   return (
     <div className="space-y-1.5">
       <Label className="text-sm">{label}</Label>

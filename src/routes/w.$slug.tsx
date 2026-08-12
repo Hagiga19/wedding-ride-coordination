@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight } from "lucide-react";
+import { Heart, Plus, Share2, Users, UserPlus, Car as CarIcon, ArrowRight, Calendar, Clock, MapPin, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,16 @@ export const Route = createFileRoute("/w/$slug")({
     </div>
   ),
 });
+
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null;
+  try {
+    const d = new Date(iso + "T00:00:00");
+    return d.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  } catch {
+    return iso;
+  }
+}
 
 function WeddingBoard() {
   const { slug } = Route.useParams();
@@ -70,7 +80,6 @@ function WeddingBoard() {
     },
   });
 
-  // Realtime: invalidate on any change for this wedding
   useEffect(() => {
     if (!wedding?.id) return;
     const channel = supabase
@@ -86,7 +95,6 @@ function WeddingBoard() {
       supabase.removeChannel(channel);
     };
   }, [qc, wedding?.id]);
-
 
   const grouped = useMemo(() => {
     const all = cars ?? [];
@@ -132,9 +140,13 @@ function WeddingBoard() {
     );
   }
 
+  const formattedDate = formatDate(wedding.wedding_date);
+  const mapsHref = wedding.wedding_location
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(wedding.wedding_location)}`
+    : null;
+
   return (
     <div className="min-h-screen pb-24">
-      {/* Header */}
       <header className="px-4 pt-8 pb-6 text-center">
         <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mb-3">
           <ArrowRight className="h-3 w-3" />
@@ -150,6 +162,37 @@ function WeddingBoard() {
         <h1 className="text-4xl sm:text-5xl font-bold text-primary tracking-tight">
           {wedding.name}
         </h1>
+
+        {/* Wedding details */}
+        {(formattedDate || wedding.wedding_time || wedding.wedding_location) && (
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-sm text-muted-foreground">
+            {formattedDate && (
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="h-4 w-4" />
+                {formattedDate}
+              </span>
+            )}
+            {wedding.wedding_time && (
+              <span className="inline-flex items-center gap-1.5">
+                <Clock className="h-4 w-4" />
+                {wedding.wedding_time}
+              </span>
+            )}
+            {wedding.wedding_location && (
+              <a
+                href={mapsHref ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 transition"
+              >
+                <MapPin className="h-4 w-4" />
+                <span className="underline">{wedding.wedding_location}</span>
+                <Navigation className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </div>
+        )}
+
         <p className="mt-3 text-muted-foreground max-w-md mx-auto text-sm leading-relaxed">
           הוסיפו רכב שאתם נוסעים בו, או הצטרפו לרכב של חבר.
           <br />
@@ -163,8 +206,6 @@ function WeddingBoard() {
         </div>
       </header>
 
-
-      {/* Main */}
       <main className="px-4 max-w-2xl mx-auto">
         <Tabs value={tab} onValueChange={(v) => setTab(v as Direction)} dir="rtl">
           <TabsList className="grid w-full grid-cols-2 h-12 bg-secondary/60 backdrop-blur">
@@ -178,7 +219,6 @@ function WeddingBoard() {
 
           {(["to", "from"] as const).map((dir) => (
             <TabsContent key={dir} value={dir} className="mt-5 space-y-4">
-              {/* Summary */}
               <div className="grid grid-cols-3 gap-2 text-center">
                 <Stat icon={<CarIcon className="h-4 w-4" />} label="רכבים" value={counts[dir].cars} />
                 <Stat icon={<Users className="h-4 w-4" />} label="נוסעים" value={counts[dir].passengers} />
@@ -220,6 +260,7 @@ function WeddingBoard() {
         direction={tab}
         car={editCar}
         weddingId={wedding.id}
+        weddingLocation={wedding.wedding_location}
       />
       <JoinCarDialog
         car={joinCar}

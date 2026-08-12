@@ -4,6 +4,9 @@ export interface Wedding {
   id: string;
   slug: string;
   name: string;
+  wedding_date: string | null;
+  wedding_time: string | null;
+  wedding_location: string | null;
   created_at: string;
 }
 

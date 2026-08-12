@@ -85,7 +85,23 @@ export function JoinCarDialog({ car, open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>הצטרפות לרכב של {car.driver_name}</DialogTitle>
           <DialogDescription>
-            {car.from_location} ← {car.to_location}
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(car.from_location)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-primary transition underline"
+            >
+              {car.from_location}
+            </a>
+            {" ← "}
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(car.to_location)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-primary transition underline"
+            >
+              {car.to_location}
+            </a>
             {car.departure_time ? ` · ${car.departure_time}` : ""} · נותרו {seatsLeft} מקומות
           </DialogDescription>
         </DialogHeader>

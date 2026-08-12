@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, MapPin, Clock, Users, Trash2, Pencil, UserPlus, MessageCircle, Home, ChevronDown } from "lucide-react";
+import { Phone, MapPin, Clock, Users, Trash2, Pencil, UserPlus, MessageCircle, Hop as Home, ChevronDown, Navigation } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -65,9 +65,27 @@ export function CarCard({ car, onJoin, onEdit }: Props) {
             </div>
             <div className="mt-1.5 flex items-center gap-1.5 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
-                {car.from_location} <span className="text-primary mx-1">←</span> {car.to_location}
-              </span>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(car.from_location)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate hover:text-primary transition inline-flex items-center gap-0.5"
+                title="ניווט לנקודת האיסוף"
+              >
+                {car.from_location}
+                <Navigation className="h-3 w-3 opacity-50" />
+              </a>
+              <span className="text-primary mx-1">←</span>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(car.to_location)}`}
+                target="_blank"
+                rel="noreferrer"
+                className="truncate hover:text-primary transition inline-flex items-center gap-0.5"
+                title="ניווט ליעד"
+              >
+                {car.to_location}
+                <Navigation className="h-3 w-3 opacity-50" />
+              </a>
             </div>
             {car.departure_time && (
               <div className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
